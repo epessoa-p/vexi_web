@@ -1,0 +1,213 @@
+// Estructura de la aplicación: barra lateral + columna principal con topbar.
+//
+// Todas las medidas van en `rem` para que escalen con el tamaño de raíz que
+// fija _layout-base.scss; así el conjunto se compacta o se agranda de una pieza.
+
+$sidebar-width: 15.5rem;
+$main-padding-x: 1.25rem;
+$main-padding-top: 0.9rem;
+
+.app-shell {
+    min-height: 100vh;
+    width: 100%;
+    background: #f2f2f2;
+}
+
+.app-sidebar {
+    flex: 0 0 $sidebar-width;
+    width: $sidebar-width;
+    background: #f8f8f8;
+    border-right: 1px solid #dfdfdf;
+    padding: 0.75rem 0.65rem;
+    position: sticky;
+    top: 0;
+    // Altura de la ventana con scroll propio: un menú largo no arrastra
+    // la página entera ni descoloca el contenido.
+    height: 100vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.1rem;
+    padding: 0.6rem 0.5rem 0.9rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.brand-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.4rem;
+    display: grid;
+    place-items: center;
+    color: #4b4b4b;
+    background: #ececec;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.brand-title {
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    line-height: 1.1;
+    color: #333;
+}
+
+.sidebar-section-title {
+    color: #828282;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    padding: 0.15rem 0.65rem 0.4rem;
+}
+
+.app-link {
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.65rem;
+    color: #464646;
+    border: 1px solid transparent;
+    font-size: 0.86rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.app-link:hover {
+    background: #ebebeb;
+    color: #202020;
+}
+
+.app-link.active {
+    background: #ffffff;
+    border-color: #d7d7d7;
+    color: #111;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.app-main {
+    flex: 1 1 auto;
+    // Sin esto, una tabla ancha estira la columna flexible y rompe el layout.
+    min-width: 0;
+    padding: $main-padding-top $main-padding-x 1.5rem;
+}
+
+.app-topbar {
+    background: #1e1e1e;
+    border: 0;
+    border-radius: 0;
+    padding: 0.5rem 1rem;
+    // Fija arriba: al desplazarse, la barra ya no se recorta ni desaparece.
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    margin-left: -$main-padding-x;
+    margin-right: -$main-padding-x;
+    margin-top: -$main-padding-top;
+}
+
+.topbar-label {
+    color: #f2f2f2;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.topbar-separator {
+    color: #8f8f8f;
+    font-size: 0.8rem;
+}
+
+.btn-icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 0.5rem;
+    border: 1px solid #3a3a3a;
+    background: #232323;
+    color: #e8e8e8;
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+
+.btn-icon:hover {
+    background: #2d2d2d;
+    color: #fff;
+}
+
+.btn-logout {
+    border: 1px solid #474747;
+    background: #2a2a2a;
+    color: #f0f0f0;
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.82rem;
+}
+
+.btn-logout:hover {
+    background: #363636;
+    color: #fff;
+}
+
+// ── Tarjetas de indicadores del dashboard ───────────────────────────────────
+
+.kpi-card {
+    background: #fff;
+    border-radius: 0.7rem;
+    padding: 1.15rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 0;
+    height: 100%;
+}
+
+.kpi-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.kpi-value {
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.kpi-label {
+    font-size: 0.82rem;
+    color: #777;
+    margin-bottom: 0.35rem;
+}
+
+.kpi-trend {
+    font-size: 0.75rem;
+}
+
+.kpi-icon {
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: 0.75rem;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 991.98px) {
+    .app-sidebar {
+        display: none;
+    }
+
+    .app-main {
+        padding: 1rem;
+    }
+
+    .app-topbar {
+        margin-left: -1rem;
+        margin-right: -1rem;
+        margin-top: -1rem;
+    }
+}
