@@ -54,6 +54,17 @@ class Plan extends Model
      */
     public const PERMISSION_MODULE_FEATURES = [
         'cajas' => 'caja',
+        'appointments' => 'agenda',
+        'consultations' => 'consultas',
+        'vaccinations' => 'vacunas',
+        'vaccines' => 'vacunas',
+        'products' => 'inventario',
+        'inventory' => 'inventario',
+        'sales' => 'pos',
+        'cash' => 'caja',
+        'expenses' => 'caja',
+        'suppliers' => 'compras',
+        'purchases' => 'compras',
     ];
 
     protected $fillable = [

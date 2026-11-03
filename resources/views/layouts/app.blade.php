@@ -18,7 +18,7 @@
             <button class="btn btn-link p-0 me-2 d-lg-none text-dark" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebarMobile" aria-controls="appSidebarMobile">
                 <i class="bi bi-list fs-4"></i>
             </button>
-            <div class="brand-icon"><i class="bi bi-scissors"></i></div>
+            <div class="brand-icon"><i class="bi bi-heart-pulse"></i></div>
             <div>
                 <div class="brand-title">VEXI</div>
                 <small class="text-muted">{{ $currentCompany?->name ?? 'Plataforma' }}</small>
@@ -33,6 +33,67 @@
                 </a>
             </li>
         </ul>
+
+        {{-- Los módulos clínicos son de UNA veterinaria: en Modo Global no se muestran. --}}
+        @php
+            $canAgenda = $currentCompany && $can('appointments.view') && $hasModule('agenda');
+            $canConsultations = $currentCompany && $can('consultations.view') && $hasModule('consultas');
+            $canHealth = $currentCompany && $can('vaccinations.view') && $hasModule('vacunas');
+            $canVaccineCatalog = $currentCompany && $can('vaccines.view') && $hasModule('vacunas');
+            $canProducts = $currentCompany && $can('products.view') && $hasModule('inventario');
+            $canInventory = $currentCompany && $can('inventory.view') && $hasModule('inventario');
+            $canSales = $currentCompany && $can('sales.view') && $hasModule('pos');
+            $canSell = $currentCompany && $can('sales.create') && $hasModule('pos');
+            $canCash = $currentCompany && $can('cash.view') && $hasModule('caja');
+            $canExpenses = $currentCompany && $can('expenses.view') && $hasModule('caja');
+            $canPurchases = $currentCompany && $can('purchases.view') && $hasModule('compras');
+            $canSuppliers = $currentCompany && $can('suppliers.view') && $hasModule('compras');
+        @endphp
+        @if($currentCompany && ($can('clients.view') || $can('pets.view') || $canAgenda || $canConsultations || $canHealth))
+            <div class="sidebar-section-title mt-4">Clínica</div>
+            <ul class="nav flex-column gap-1">
+                @if($canAgenda)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}" href="{{ route('appointments.index') }}">
+                            <i class="bi bi-calendar-week"></i> Agenda
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('waiting-room.*') ? 'active' : '' }}" href="{{ route('waiting-room.index') }}">
+                            <i class="bi bi-hourglass-split"></i> Sala de espera
+                        </a>
+                    </li>
+                @endif
+                @if($canConsultations)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('consultations.*') ? 'active' : '' }}" href="{{ route('consultations.index') }}">
+                            <i class="bi bi-clipboard2-pulse"></i> Consultas
+                        </a>
+                    </li>
+                @endif
+                @if($canHealth)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('health.*', 'vaccinations.*', 'dewormings.*') ? 'active' : '' }}" href="{{ route('health.index') }}">
+                            <i class="bi bi-shield-plus"></i> Vacunación
+                        </a>
+                    </li>
+                @endif
+                @if($can('clients.view'))
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('clients.*') ? 'active' : '' }}" href="{{ route('clients.index') }}">
+                            <i class="bi bi-people"></i> Clientes
+                        </a>
+                    </li>
+                @endif
+                @if($can('pets.view'))
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('pets.*') ? 'active' : '' }}" href="{{ route('pets.index') }}">
+                            <i class="bi bi-heart-pulse"></i> Mascotas
+                        </a>
+                    </li>
+                @endif
+            </ul>
+        @endif
 
         @if($authUser->is_super_admin)
             <div class="sidebar-section-title mt-4">Plataforma</div>
@@ -52,6 +113,89 @@
                         <i class="bi bi-shield-lock"></i> Roles
                     </a>
                 </li>
+            </ul>
+        @endif
+
+        @if($canSales || $canCash || $canExpenses)
+            <div class="sidebar-section-title mt-4">Ventas y caja</div>
+            <ul class="nav flex-column gap-1">
+                @if($canSell)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('pos.*') ? 'active' : '' }}" href="{{ route('pos.create') }}">
+                            <i class="bi bi-cart-plus"></i> Nueva venta
+                        </a>
+                    </li>
+                @endif
+                @if($canSales)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('sales.*') ? 'active' : '' }}" href="{{ route('sales.index') }}">
+                            <i class="bi bi-receipt"></i> Ventas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('receivables.*') ? 'active' : '' }}" href="{{ route('receivables.index') }}">
+                            <i class="bi bi-hourglass"></i> Cuentas por cobrar
+                        </a>
+                    </li>
+                @endif
+                @if($canCash)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('cash.*') ? 'active' : '' }}" href="{{ route('cash.index') }}">
+                            <i class="bi bi-cash-coin"></i> Caja
+                        </a>
+                    </li>
+                @endif
+                @if($canExpenses)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}" href="{{ route('expenses.index') }}">
+                            <i class="bi bi-wallet2"></i> Gastos
+                        </a>
+                    </li>
+                @endif
+            </ul>
+        @endif
+
+        @if($canProducts || $canInventory || $canPurchases || $canSuppliers)
+            <div class="sidebar-section-title mt-4">Inventario y compras</div>
+            <ul class="nav flex-column gap-1">
+                @if($canProducts)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('products.*') ? 'active' : '' }}" href="{{ route('products.index') }}">
+                            <i class="bi bi-box-seam"></i> Productos
+                        </a>
+                    </li>
+                @endif
+                @if($canInventory)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('stock-movements.*') ? 'active' : '' }}" href="{{ route('stock-movements.index') }}">
+                            <i class="bi bi-arrow-left-right"></i> Movimientos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('expiry.*') ? 'active' : '' }}" href="{{ route('expiry.index') }}">
+                            <i class="bi bi-hourglass-bottom"></i> Vencimientos
+                        </a>
+                    </li>
+                @endif
+                @if($canPurchases)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}" href="{{ route('purchases.index') }}">
+                            <i class="bi bi-bag"></i> Compras
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('payables.*') ? 'active' : '' }}" href="{{ route('payables.index') }}">
+                            <i class="bi bi-hourglass-split"></i> Cuentas por pagar
+                        </a>
+                    </li>
+                @endif
+                @if($canSuppliers)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}" href="{{ route('suppliers.index') }}">
+                            <i class="bi bi-truck"></i> Proveedores
+                        </a>
+                    </li>
+                @endif
             </ul>
         @endif
 
@@ -95,6 +239,54 @@
                 </li>
             @endif
         </ul>
+
+        @if($currentCompany && ($can('species.view') || $can('services.view') || $canVaccineCatalog || $canProducts || $canSales || $canExpenses))
+            <div class="sidebar-section-title mt-4">Configuración</div>
+            <ul class="nav flex-column gap-1">
+                @if($can('services.view'))
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">
+                            <i class="bi bi-card-checklist"></i> Servicios
+                        </a>
+                    </li>
+                @endif
+                @if($canVaccineCatalog)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('vaccines.*') ? 'active' : '' }}" href="{{ route('vaccines.index') }}">
+                            <i class="bi bi-capsule"></i> Vacunas
+                        </a>
+                    </li>
+                @endif
+                @if($canProducts)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('product-categories.*') ? 'active' : '' }}" href="{{ route('product-categories.index') }}">
+                            <i class="bi bi-bookmarks"></i> Categorías de productos
+                        </a>
+                    </li>
+                @endif
+                @if($canSales)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('payment-methods.*') ? 'active' : '' }}" href="{{ route('payment-methods.index') }}">
+                            <i class="bi bi-credit-card"></i> Métodos de pago
+                        </a>
+                    </li>
+                @endif
+                @if($canExpenses)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('expense-categories.*') ? 'active' : '' }}" href="{{ route('expense-categories.index') }}">
+                            <i class="bi bi-tags"></i> Categorías de gastos
+                        </a>
+                    </li>
+                @endif
+                @if($can('species.view'))
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('species.*') ? 'active' : '' }}" href="{{ route('species.index') }}">
+                            <i class="bi bi-tags"></i> Especies y razas
+                        </a>
+                    </li>
+                @endif
+            </ul>
+        @endif
     </aside>
 
     <main class="app-main">
@@ -157,6 +349,8 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
                             <li><span class="dropdown-item-text text-muted">{{ auth()->user()->name }}</span></li>
                             <li><span class="dropdown-item-text text-muted small">{{ auth()->user()->email }}</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ route('profile.professional') }}"><i class="bi bi-person-badge"></i> Mi perfil profesional</a></li>
                         </ul>
                     </div>
                     <form action="{{ route('logout') }}" method="POST" class="m-0">
@@ -249,6 +443,22 @@
         <nav class="p-3">
             <ul class="nav flex-column gap-1">
                 <li><a class="nav-link app-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a></li>
+                @if($canAgenda)
+                    <li><a class="nav-link app-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}" href="{{ route('appointments.index') }}">Agenda</a></li>
+                    <li><a class="nav-link app-link {{ request()->routeIs('waiting-room.*') ? 'active' : '' }}" href="{{ route('waiting-room.index') }}">Sala de espera</a></li>
+                @endif
+                @if($canConsultations)
+                    <li><a class="nav-link app-link {{ request()->routeIs('consultations.*') ? 'active' : '' }}" href="{{ route('consultations.index') }}">Consultas</a></li>
+                @endif
+                @if($canHealth)
+                    <li><a class="nav-link app-link {{ request()->routeIs('health.*', 'vaccinations.*', 'dewormings.*') ? 'active' : '' }}" href="{{ route('health.index') }}">Vacunación</a></li>
+                @endif
+                @if($currentCompany && $can('clients.view'))
+                    <li><a class="nav-link app-link {{ request()->routeIs('clients.*') ? 'active' : '' }}" href="{{ route('clients.index') }}">Clientes</a></li>
+                @endif
+                @if($currentCompany && $can('pets.view'))
+                    <li><a class="nav-link app-link {{ request()->routeIs('pets.*') ? 'active' : '' }}" href="{{ route('pets.index') }}">Mascotas</a></li>
+                @endif
                 @if($authUser->is_super_admin)
                     <li><a class="nav-link app-link {{ request()->routeIs('companies.*') ? 'active' : '' }}" href="{{ route('companies.index') }}">Empresas</a></li>
                     <li><a class="nav-link app-link {{ request()->routeIs('plans.*') ? 'active' : '' }}" href="{{ route('plans.index') }}">Planes</a></li>
@@ -268,6 +478,42 @@
                 @endif
                 @if($can('cajas.view') && $hasModule('caja'))
                     <li><a class="nav-link app-link {{ request()->routeIs('cajas.*') ? 'active' : '' }}" href="{{ route('cajas.index') }}">Cajas</a></li>
+                @endif
+                @if($currentCompany && $can('services.view'))
+                    <li><a class="nav-link app-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">Servicios</a></li>
+                @endif
+                @if($canVaccineCatalog)
+                    <li><a class="nav-link app-link {{ request()->routeIs('vaccines.*') ? 'active' : '' }}" href="{{ route('vaccines.index') }}">Vacunas</a></li>
+                @endif
+                @if($canSell)
+                    <li><a class="nav-link app-link {{ request()->routeIs('pos.*') ? 'active' : '' }}" href="{{ route('pos.create') }}">Nueva venta</a></li>
+                @endif
+                @if($canSales)
+                    <li><a class="nav-link app-link {{ request()->routeIs('sales.*') ? 'active' : '' }}" href="{{ route('sales.index') }}">Ventas</a></li>
+                    <li><a class="nav-link app-link {{ request()->routeIs('receivables.*') ? 'active' : '' }}" href="{{ route('receivables.index') }}">Cuentas por cobrar</a></li>
+                @endif
+                @if($canCash)
+                    <li><a class="nav-link app-link {{ request()->routeIs('cash.*') ? 'active' : '' }}" href="{{ route('cash.index') }}">Caja</a></li>
+                @endif
+                @if($canExpenses)
+                    <li><a class="nav-link app-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}" href="{{ route('expenses.index') }}">Gastos</a></li>
+                @endif
+                @if($canProducts)
+                    <li><a class="nav-link app-link {{ request()->routeIs('products.*') ? 'active' : '' }}" href="{{ route('products.index') }}">Productos</a></li>
+                @endif
+                @if($canInventory)
+                    <li><a class="nav-link app-link {{ request()->routeIs('stock-movements.*') ? 'active' : '' }}" href="{{ route('stock-movements.index') }}">Movimientos</a></li>
+                    <li><a class="nav-link app-link {{ request()->routeIs('expiry.*') ? 'active' : '' }}" href="{{ route('expiry.index') }}">Vencimientos</a></li>
+                @endif
+                @if($canPurchases)
+                    <li><a class="nav-link app-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}" href="{{ route('purchases.index') }}">Compras</a></li>
+                    <li><a class="nav-link app-link {{ request()->routeIs('payables.*') ? 'active' : '' }}" href="{{ route('payables.index') }}">Cuentas por pagar</a></li>
+                @endif
+                @if($canSuppliers)
+                    <li><a class="nav-link app-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}" href="{{ route('suppliers.index') }}">Proveedores</a></li>
+                @endif
+                @if($currentCompany && $can('species.view'))
+                    <li><a class="nav-link app-link {{ request()->routeIs('species.*') ? 'active' : '' }}" href="{{ route('species.index') }}">Especies y razas</a></li>
                 @endif
             </ul>
         </nav>

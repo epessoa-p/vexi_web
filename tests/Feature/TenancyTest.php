@@ -88,6 +88,19 @@ class TenancyTest extends TestCase
         $this->assertSame($a->id, $tenancy->id());
     }
 
+    public function test_el_route_model_binding_ve_la_empresa_activa(): void
+    {
+        // Regresión: SetTenant corría después de SubstituteBindings y, en una
+        // petición nueva, el binding buscaba con la empresa vacía → 404.
+        $company = $this->companyWithPlan();
+        $branch = Branch::factory()->create(['company_id' => $company->id]);
+        $user = $this->userInCompany($company, ['branches.view']);
+
+        app(Tenancy::class)->forget();
+
+        $this->actingInCompany($user, $company)->get(route('branches.show', $branch))->assertOk();
+    }
+
     public function test_el_listado_web_solo_muestra_las_sucursales_de_la_empresa_activa(): void
     {
         $mia = $this->companyWithPlan();

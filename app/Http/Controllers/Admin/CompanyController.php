@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Models\Company;
 use App\Models\Plan;
+use App\Support\ClinicalCatalog;
 use Illuminate\Support\Facades\DB;
 
 class CompanyController extends Controller
@@ -32,6 +33,9 @@ class CompanyController extends Controller
 
         $company = DB::transaction(function () use ($request, $planId) {
             $company = Company::create($request->validated());
+
+            // La veterinaria arranca con especies y razas listas para usar.
+            ClinicalCatalog::seedFor($company);
 
             // Una empresa sin suscripción queda bloqueada al entrar, así que
             // se le asigna su periodo de prueba en el mismo acto de alta.

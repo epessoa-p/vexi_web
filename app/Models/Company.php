@@ -142,6 +142,7 @@ class Company extends Model
         return match ($key) {
             'branches' => Branch::forCompany($this->id)->count(),
             'users'    => $this->users()->wherePivot('active', true)->count(),
+            'products' => Product::forCompany($this->id)->count(),
             default    => 0,
         };
     }

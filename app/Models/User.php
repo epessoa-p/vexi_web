@@ -26,6 +26,9 @@ class User extends Authenticatable
         'password',
         'avatar',
         'phone',
+        'professional_license',
+        'specialty',
+        'signature',
         'is_super_admin',
         'active',
     ];
@@ -71,6 +74,12 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Permission::class, 'user_permission', 'user_id', 'permission_id')
                     ->withPivot('company_id');
+    }
+
+    /** Firma escaneada para recetas; null si no subió una. */
+    public function getSignatureUrlAttribute(): ?string
+    {
+        return $this->signature ? asset('storage/' . $this->signature) : null;
     }
 
     public function personal(): HasOne

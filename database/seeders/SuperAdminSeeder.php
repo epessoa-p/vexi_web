@@ -36,6 +36,8 @@ class SuperAdminSeeder extends Seeder
             // Con permisos recortados: sirve para comprobar que el menú y las
             // rutas se filtran de verdad.
             ['cajero@veterinariademo.test', 'Cajero Veterinaria Demo', $demo, 'cashier'],
+            // Profesional al que se asignan las citas de demostración.
+            ['vet@veterinariademo.test', 'Dra. Paula Rojas', $demo, 'veterinarian'],
             // En la otra empresa: sirve para comprobar el aislamiento.
             ['admin@veterinariaprueba.test', 'Admin Veterinaria Prueba', $prueba, 'admin'],
         ];

@@ -52,6 +52,13 @@ class SetTenant
 
         $company = $tenancy->company();
 
+        // Fechas y horas (agenda, registros clínicos) en la hora local de la
+        // veterinaria: se guardan y se muestran en su zona horaria.
+        if ($company?->timezone && in_array($company->timezone, timezone_identifiers_list(), true)) {
+            config(['app.timezone' => $company->timezone]);
+            date_default_timezone_set($company->timezone);
+        }
+
         // Los controladores y las vistas leen de aquí, sin repetir la consulta.
         $request->attributes->set('tenant_company', $company);
         view()->share('tenantCompany', $company);

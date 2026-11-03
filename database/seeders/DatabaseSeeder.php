@@ -26,8 +26,10 @@ class DatabaseSeeder extends Seeder
                 RolePermissionSeeder::class,
                 PlanSeeder::class,
                 CompanySeeder::class,
+                ClinicalCatalogSeeder::class,
                 SubscriptionSeeder::class,
                 SuperAdminSeeder::class,
+                DemoPatientsSeeder::class,
             ]);
         });
     }

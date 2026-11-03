@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Caja extends Model
@@ -31,5 +32,16 @@ class Caja extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(CashSession::class)->latest('opened_at');
+    }
+
+    /** Turno abierto de esta caja, si lo hay. */
+    public function openSession(): ?CashSession
+    {
+        return $this->sessions()->where('status', 'open')->first();
     }
 }

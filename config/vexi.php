@@ -73,4 +73,48 @@ return [
 
     'require_subscription' => env('VEXI_REQUIRE_SUBSCRIPTION', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Agenda
+    |--------------------------------------------------------------------------
+    |
+    | Franja visible del calendario y duración de una cita cuando el servicio
+    | no define la suya. Pasarán a ser configurables por veterinaria (§15.4).
+    |
+    */
+
+    'agenda' => [
+        'slot_min_time' => '07:00:00',
+        'slot_max_time' => '21:00:00',
+        'default_duration' => 30,   // minutos
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Desparasitación y alertas sanitarias
+    |--------------------------------------------------------------------------
+    |
+    | Días sugeridos hasta la próxima desparasitación (se pueden cambiar en
+    | cada registro) y ventana de "próximas" del calendario sanitario.
+    |
+    */
+
+    'deworming' => [
+        'internal' => 90,
+        'external' => 30,
+    ],
+
+    'health_alert_days' => 15,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inventario
+    |--------------------------------------------------------------------------
+    |
+    | Días de anticipación con que un lote aparece como "próximo a vencer".
+    |
+    */
+
+    'expiry_alert_days' => 60,
+
 ];
