@@ -11,6 +11,11 @@ use App\Models\Consultation;
 use App\Models\Deworming;
 use App\Models\Vaccination;
 use App\Models\Vaccine;
+use App\Models\Hospitalization;
+use App\Models\Kennel;
+use App\Models\LabRequest;
+use App\Models\LabStudyParameter;
+use App\Models\LabStudyType;
 use App\Models\Pet;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -25,6 +30,7 @@ use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\Supplier;
 use App\Support\Cash;
+use App\Support\Hospitalizations;
 use App\Support\Purchases;
 use App\Support\Sales;
 use App\Support\Stock;
@@ -121,7 +127,211 @@ class DemoPatientsSeeder extends Seeder
             $this->seedInventory($demo);
             $this->seedSales($demo);
             $this->seedPurchases($demo);
+            $this->seedLab($demo);
+            $this->seedHospital($demo);
+            $this->seedReportHistory($demo);
         });
+    }
+
+    /** Espacios y un paciente internado con tratamiento en curso y una toma atrasada. */
+    /**
+     * Seis meses de actividad para que los reportes se puedan leer en la demo.
+     * Es historia ya cerrada: las ventas no generan kardex (el stock de la demo
+     * no cambia) y sus consultas ya están cobradas, así no aparecen por cobrar.
+     */
+    protected function seedReportHistory(Company $demo): void
+    {
+        mt_srand(20261106);
+
+        $branch = Branch::where('name', 'Sede Central')->first() ?? Stock::defaultBranch($demo->id);
+        $pets = Pet::get(['id', 'client_id', 'species_id']);
+        $staff = User::whereIn('email', ['vet@veterinariademo.test', 'admin@veterinariademo.test'])->pluck('id')->values();
+        $seller = User::where('email', 'cajero@veterinariademo.test')->value('id') ?? $staff->first();
+        $methods = PaymentMethod::whereIn('type', ['cash', 'qr', 'transfer', 'card'])->get();
+        $consultation = Service::where('category', 'consulta')->first();
+        $services = Service::where('price', '>', 0)->get();
+        $products = Product::where('sale_price', '>', 0)->get();
+        $vaccines = Vaccine::get();
+        $categories = ExpenseCategory::get();
+        $diagnoses = ['Otitis externa', 'Dermatitis alérgica', 'Gastroenteritis aguda', 'Parasitosis intestinal', 'Control de rutina', 'Conjuntivitis', 'Dermatitis alérgica', 'Control de rutina'];
+        $number = (int) Sale::max('number');
+
+        $sell = function (array $lines, $at, Pet $pet) use ($demo, $branch, $seller, $methods, &$number) {
+            $total = round(collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_price']), 2);
+            $sale = new Sale(['company_id' => $demo->id, 'branch_id' => $branch->id, 'number' => ++$number, 'client_id' => $pet->client_id, 'pet_id' => $pet->id,
+                'user_id' => $seller, 'status' => 'completed', 'subtotal' => $total, 'discount' => 0, 'total' => $total, 'paid' => $total, 'balance' => 0]);
+            $sale->created_at = $sale->updated_at = $at;
+            $sale->save();
+
+            foreach ($lines as $line) {
+                $sale->items()->create($line + ['company_id' => $demo->id, 'discount' => 0, 'total' => round($line['quantity'] * $line['unit_price'], 2), 'affects_stock' => false]);
+            }
+
+            $sale->payments()->create(['company_id' => $demo->id, 'payment_method_id' => $methods[mt_rand(0, $methods->count() - 1)]->id, 'kind' => 'sale',
+                'amount' => $total, 'user_id' => $seller, 'paid_at' => $at]);
+
+            return $sale;
+        };
+
+        // De menos a más, con los últimos días incluidos: se ve una tendencia.
+        for ($back = 180; $back >= 1; $back--) {
+            $day = now()->subDays($back)->startOfDay();
+
+            if ($day->isSunday()) {
+                continue;
+            }
+
+            $busy = (int) round(1 + (180 - $back) / 70) + mt_rand(0, 2);
+
+            for ($i = 0; $i < $busy; $i++) {
+                $at = $day->copy()->addHours(mt_rand(9, 18))->addMinutes(mt_rand(0, 59));
+                $pet = $pets[mt_rand(0, $pets->count() - 1)];
+                $sold = $products->count() && mt_rand(0, 2) === 0 ? $products[mt_rand(0, $products->count() - 1)] : null;
+                $productLines = $sold ? [['type' => 'product', 'product_id' => $sold->id, 'description' => $sold->label, 'quantity' => mt_rand(1, 2), 'unit_price' => (float) $sold->sale_price]] : [];
+
+                if ($consultation && mt_rand(0, 2) > 0) {
+                    $record = new Consultation(['company_id' => $demo->id, 'branch_id' => $branch->id, 'pet_id' => $pet->id, 'client_id' => $pet->client_id,
+                        'veterinarian_id' => $staff[mt_rand(0, 3) === 0 ? $staff->count() - 1 : 0], 'status' => 'finished', 'started_at' => $at, 'finished_at' => $at->copy()->addMinutes(25),
+                        'reason' => 'Atención de rutina']);
+                    $record->created_at = $record->updated_at = $at;
+                    $record->save();
+                    $record->diagnoses()->create(['company_id' => $demo->id, 'type' => 'primary', 'description' => $diagnoses[mt_rand(0, count($diagnoses) - 1)]]);
+
+                    $sale = $sell(array_merge([['type' => 'consultation', 'consultation_id' => $record->id, 'service_id' => $consultation->id,
+                        'description' => 'Consulta '.$at->format('d/m').' · '.$consultation->name, 'quantity' => 1, 'unit_price' => (float) $consultation->price]], $productLines), $at, $pet);
+                    $record->update(['sale_id' => $sale->id]);
+                } elseif ($services->count()) {
+                    $service = $services[mt_rand(0, $services->count() - 1)];
+                    $sell(array_merge([['type' => 'service', 'service_id' => $service->id, 'description' => $service->name, 'quantity' => 1, 'unit_price' => (float) $service->price]], $productLines), $at, $pet);
+                }
+            }
+
+            if ($vaccines->count() && mt_rand(0, 3) === 0) {
+                $pet = $pets[mt_rand(0, $pets->count() - 1)];
+                Vaccination::create(['company_id' => $demo->id, 'pet_id' => $pet->id, 'vaccine_id' => $vaccines[mt_rand(0, $vaccines->count() - 1)]->id,
+                    'applied_at' => $day, 'dose_number' => 1, 'veterinarian_id' => $staff->first()]);
+            }
+
+            // Gastos: un par de pagos por semana.
+            if ($categories->count() && mt_rand(0, 2) === 0) {
+                $expense = new Expense(['company_id' => $demo->id, 'branch_id' => $branch->id, 'expense_category_id' => $categories[mt_rand(0, $categories->count() - 1)]->id,
+                    'concept' => 'Gasto del '.$day->format('d/m'), 'amount' => mt_rand(40, 320), 'spent_at' => $day, 'user_id' => $staff->first()]);
+                $expense->created_at = $expense->updated_at = $day;
+                $expense->save();
+            }
+        }
+
+        mt_srand();
+    }
+
+    protected function seedHospital(Company $demo): void
+    {
+        if (Hospitalization::exists()) {
+            return;
+        }
+
+        $branch = Branch::where('name', 'Sede Central')->first();
+        foreach (['Canil 1', 'Canil 2', 'Jaula gatos 1', 'Aislamiento'] as $name) {
+            Kennel::create(['company_id' => $demo->id, 'branch_id' => $branch?->id, 'name' => $name, 'active' => true]);
+        }
+
+        $vet = User::where('email', 'vet@veterinariademo.test')->first();
+        $michi = Pet::where('name', 'Michi')->firstOrFail();
+        $admitted = now()->subDay()->startOfHour();
+
+        $stay = Hospitalizations::admit([
+            'pet_id' => $michi->id,
+            'kennel_id' => Kennel::where('name', 'Jaula gatos 1')->value('id'),
+            'veterinarian_id' => $vet?->id,
+            'admitted_at' => $admitted,
+            'condition' => 'improving',
+            'reason' => 'Anorexia y deshidratación',
+            'admission_diagnosis' => 'Gastroenteritis aguda',
+            'daily_rate' => 150,
+        ]);
+
+        $treatment = Hospitalizations::addTreatment($stay, [
+            'product_id' => Product::where('name', 'Amoxicilina 250 mg')->value('id'),
+            'medication' => 'Amoxicilina 250 mg',
+            'dose' => '1/2 comp.',
+            'stock_quantity' => 0.5,
+            'route' => 'oral',
+            'frequency_hours' => 12,
+            'starts_at' => $admitted,
+            'ends_at' => $admitted->copy()->addDays(5),
+        ]);
+        Hospitalizations::giveDose($treatment->doses()->first());
+
+        $stay->records()->create(['company_id' => $demo->id, 'type' => 'vitals', 'recorded_at' => $admitted, 'temperature' => 39.4,
+            'heart_rate' => 190, 'respiratory_rate' => 36, 'hydration' => 'moderate', 'notes' => 'Al ingreso.', 'recorded_by' => $vet?->id]);
+        $stay->records()->create(['company_id' => $demo->id, 'type' => 'evolution', 'recorded_at' => now()->subHours(2), 'condition' => 'improving',
+            'notes' => 'Comió una porción pequeña. Sin vómitos desde anoche.', 'recorded_by' => $vet?->id]);
+
+        // Una internación ya cerrada, pendiente de cobro en el punto de venta.
+        $closed = Hospitalizations::admit([
+            'pet_id' => Pet::where('name', 'Rocky')->firstOrFail()->id,
+            'veterinarian_id' => $vet?->id,
+            'admitted_at' => now()->subDays(6),
+            'condition' => 'stable',
+            'reason' => 'Observación posquirúrgica',
+            'daily_rate' => 120,
+        ]);
+        $closed->charges()->create(['company_id' => $demo->id, 'description' => 'Fluidoterapia', 'quantity' => 1, 'unit_price' => 80, 'total' => 80, 'created_by' => $vet?->id]);
+        Hospitalizations::discharge($closed, 'discharged', [
+            'discharged_at' => now()->subDays(4),
+            'final_diagnosis' => 'Evolución favorable',
+            'home_treatment' => 'Reposo y control de la herida.',
+        ]);
+    }
+
+    /**
+     * Un estudio completado con un valor fuera de rango, uno en proceso y uno
+     * solicitado. Las referencias del hemograma son ilustrativas, solo para
+     * esta veterinaria de demostración: el catálogo base las deja vacías.
+     */
+    protected function seedLab(Company $demo): void
+    {
+        if (LabRequest::exists()) {
+            return;
+        }
+
+        $vet = User::where('email', 'vet@veterinariademo.test')->first();
+        $study = fn (string $name) => LabStudyType::where('name', $name)->firstOrFail();
+        $pet = fn (string $name) => Pet::where('name', $name)->firstOrFail();
+
+        $hemogram = $study('Hemograma');
+        foreach (['Hematocrito' => [37, 55], 'Hemoglobina' => [12, 18], 'Leucocitos' => [6, 17], 'Plaquetas' => [200, 500]] as $name => [$min, $max]) {
+            LabStudyParameter::where('lab_study_type_id', $hemogram->id)->where('name', $name)->update(['reference_min' => $min, 'reference_max' => $max]);
+        }
+
+        foreach (['Hemograma' => 90, 'Coproparasitológico' => 40, 'Radiografía' => 150] as $name => $price) {
+            $study($name)->update(['price' => $price]);
+        }
+
+        $base = ['company_id' => $demo->id, 'requested_by' => $vet?->id];
+        $luna = $pet('Luna');
+
+        $completed = LabRequest::create($base + [
+            'pet_id' => $luna->id,
+            'consultation_id' => Consultation::where('pet_id', $luna->id)->value('id'),
+            'lab_study_type_id' => $hemogram->id,
+            'requested_at' => now()->subDay(),
+            'status' => 'completed',
+            'result_date' => now()->toDateString(),
+            'responsible_id' => $vet?->id,
+            'result_notes' => 'Leucocitosis leve. Correlacionar con la otitis en tratamiento.',
+            'started_at' => now()->subDay(),
+            'completed_at' => now(),
+        ]);
+        foreach ([['Hematocrito', '44', '%', 37, 55], ['Hemoglobina', '15.1', 'g/dL', 12, 18], ['Leucocitos', '19.2', '×10³/µL', 6, 17], ['Plaquetas', '310', '×10³/µL', 200, 500]] as $sort => [$name, $value, $unit, $min, $max]) {
+            $completed->results()->create(['company_id' => $demo->id, 'name' => $name, 'value' => $value, 'unit' => $unit,
+                'reference_min' => $min, 'reference_max' => $max, 'sort' => $sort]);
+        }
+
+        LabRequest::create($base + ['pet_id' => $pet('Rocky')->id, 'lab_study_type_id' => $study('Coproparasitológico')->id,
+            'requested_at' => now()->subHours(3), 'status' => 'in_process', 'started_at' => now()->subHours(2)]);
+        LabRequest::create($base + ['pet_id' => $pet('Rocky')->id, 'lab_study_type_id' => $study('Radiografía')->id,
+            'requested_at' => now()->subHour(), 'status' => 'requested', 'notes' => 'Cadera, proyección ventrodorsal.']);
     }
 
     /** Proveedores, una compra recibida con saldo por pagar y un pedido pendiente de recibir. */

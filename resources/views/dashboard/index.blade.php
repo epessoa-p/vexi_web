@@ -85,7 +85,7 @@
                         ['Ingresos de hoy', $money($finance['today']), $finance['sales_today'] . ' ventas', 'text-success'],
                         ['Ingresos del mes', $money($finance['month']), $finance['sales_month'] . ' ventas', 'text-success'],
                         $finance['expenses_month'] !== null ? ['Gastos del mes', $money($finance['expenses_month']), null, 'text-danger'] : null,
-                        $finance['expenses_month'] !== null ? ['Utilidad estimada', $money($finance['profit_month']), 'ingresos − gastos', $finance['profit_month'] < 0 ? 'text-danger' : 'text-primary'] : null,
+                        $finance['expenses_month'] !== null ? ['Utilidad estimada', $money($finance['profit_month']), 'ingresos − costo − gastos', $finance['profit_month'] < 0 ? 'text-danger' : 'text-primary'] : null,
                         ['Cuentas por cobrar', $money($finance['receivable']), null, $finance['receivable'] > 0 ? 'text-warning' : 'text-muted'],
                         $finance['payable'] !== null ? ['Cuentas por pagar', $money($finance['payable']), 'a proveedores', $finance['payable'] > 0 ? 'text-danger' : 'text-muted'] : null,
                     ]) as [$label, $value, $hint, $color])
@@ -136,6 +136,32 @@
                 @empty
                     <p class="small text-muted mb-0">No hay más citas pendientes hoy.</p>
                 @endforelse
+            </div>
+        </div>
+    @endif
+
+    @if($hospital)
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-hospital"></i> Hospitalización</h6>
+                    <a href="{{ route('hospitalizations.index') }}" class="btn btn-sm btn-outline-primary">Ver internados</a>
+                </div>
+                <div class="row g-2 text-center">
+                    @foreach([
+                        ['active', 'Internados', 'text-primary'],
+                        ['critical', 'En estado crítico', 'text-danger'],
+                        ['overdue', 'Tomas atrasadas', 'text-danger'],
+                        ['next', 'Tomas en 6 horas', 'text-warning'],
+                    ] as [$key, $label, $color])
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded py-2">
+                                <div class="fs-4 fw-bold {{ $hospital[$key] ? $color : 'text-muted' }}">{{ $hospital[$key] }}</div>
+                                <div class="small text-muted">{{ $label }}</div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
             </div>
         </div>
     @endif
@@ -198,7 +224,7 @@
             <h5 class="mt-3 fw-semibold">Bienvenido a Vexi</h5>
             <p class="text-muted mb-0">
                 Ya están disponibles clientes y mascotas, agenda, sala de espera, consultas con receta, vacunas y desparasitaciones, y farmacia e inventario.
-                Compras, ventas y laboratorio llegan en las siguientes fases.
+                Reportes y notificaciones llegan en las siguientes fases.
             </p>
         </div>
     </div>

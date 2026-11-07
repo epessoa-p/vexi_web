@@ -10,6 +10,10 @@
     $canSchedule = $agenda && $can('appointments.create') && $pet->status === 'active';
     $consultasView = $can('consultations.view') && $tenantCompany?->planAllows('consultas');
     $canConsult = $consultasView && $can('consultations.create') && $pet->status === 'active';
+    $hospitalView = $can('hospitalizations.view') && $tenantCompany?->planAllows('hospitalizacion');
+    $currentStay = $hospitalView ? $hospitalizations->firstWhere('status', 'active') : null;
+    $labView = $can('lab_requests.view') && $tenantCompany?->planAllows('laboratorio');
+    $canLab = $labView && $can('lab_requests.create') && $pet->status === 'active';
     $healthView = $can('vaccinations.view') && $tenantCompany?->planAllows('vacunas');
     $canHealth = $healthView && $can('vaccinations.create') && $pet->status === 'active';
     $overdueHealth = $healthView ? $pendingHealth->filter(fn ($p) => $p['due']->lt(now()->startOfDay())) : collect();
@@ -63,6 +67,14 @@
             <i class="bi bi-shield-exclamation fs-5"></i>
             <div><strong>Atrasado:</strong> {{ $overdueHealth->map(fn ($p) => $p['title'] . ' (desde ' . $p['due']->format('d/m/Y') . ')')->implode(' · ') }}</div>
             <a href="{{ route('pets.show', ['pet' => $pet, 'tab' => 'health']) }}" class="btn btn-sm btn-outline-dark ms-auto text-nowrap">Ver vacunas</a>
+        </div>
+    @endif
+
+    @if($currentStay)
+        <div class="alert alert-info d-flex gap-2 align-items-center py-2">
+            <i class="bi bi-hospital fs-5"></i>
+            <div><strong>Internado</strong> desde el {{ $currentStay->admitted_at->format('d/m/Y H:i') }}{{ $currentStay->kennel ? ' · ' . $currentStay->kennel->name : '' }} · {{ $currentStay->condition_label }}</div>
+            <a href="{{ route('hospitalizations.show', $currentStay) }}" class="btn btn-sm btn-outline-dark ms-auto text-nowrap">Ver internación</a>
         </div>
     @endif
 
@@ -313,13 +325,52 @@
                             @endforelse
                             <hr>
                         @endif
+                        @if($labView)
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0"><i class="bi bi-eyedropper"></i> Laboratorio ({{ $labRequests->count() }})</h6>
+                                @if($canLab)
+                                    <a href="{{ route('lab.create', ['pet_id' => $pet->id]) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Solicitar estudio</a>
+                                @endif
+                            </div>
+                            @forelse($labRequests as $lab)
+                                @php $abnormal = $lab->results->filter(fn ($r) => in_array($r->flag, ['low', 'high'], true)); @endphp
+                                <a href="{{ route('lab.show', $lab) }}" class="d-flex justify-content-between align-items-center border rounded p-2 mb-2 text-decoration-none text-reset small">
+                                    <span>
+                                        <strong>{{ $lab->studyType?->name }}</strong> · {{ $lab->requested_at->format('d/m/Y') }}
+                                        @if($abnormal->isNotEmpty())<div class="text-danger">Fuera de rango: {{ $abnormal->pluck('name')->implode(', ') }}</div>@endif
+                                    </span>
+                                    <span class="badge bg-{{ $lab->status_color }}">{{ $lab->status_label }}</span>
+                                </a>
+                            @empty
+                                <p class="text-muted small">Sin estudios registrados.</p>
+                            @endforelse
+                            <hr>
+                        @endif
+                        @if($hospitalView)
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0"><i class="bi bi-hospital"></i> Hospitalizaciones ({{ $hospitalizations->count() }})</h6>
+                                @if(! $currentStay && $pet->status === 'active' && $can('hospitalizations.create'))
+                                    <a href="{{ route('hospitalizations.create', ['pet_id' => $pet->id]) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Internar</a>
+                                @endif
+                            </div>
+                            @forelse($hospitalizations as $stay)
+                                <a href="{{ route('hospitalizations.show', $stay) }}" class="d-flex justify-content-between align-items-center border rounded p-2 mb-2 text-decoration-none text-reset small">
+                                    <span>
+                                        <strong>{{ $stay->admitted_at->format('d/m/Y') }}</strong>{{ $stay->discharged_at ? ' – ' . $stay->discharged_at->format('d/m/Y') : '' }} · {{ $stay->reason }}
+                                        @if($stay->final_diagnosis)<div class="text-muted">{{ $stay->final_diagnosis }}</div>@endif
+                                    </span>
+                                    <span class="badge bg-{{ $stay->status_color }}">{{ $stay->status_label }}</span>
+                                </a>
+                            @empty
+                                <p class="text-muted small">Sin hospitalizaciones.</p>
+                            @endforelse
+                            <hr>
+                        @endif
                         <p class="text-muted small">Próximamente en el expediente:</p>
                         <div class="row g-2">
                             @foreach([
                                 ['bi-scissors', 'Cirugías'],
-                                ['bi-hospital', 'Hospitalizaciones'],
-                                ['bi-eyedropper', 'Resultados de laboratorio'],
-                                ['bi-paperclip', 'Archivos adjuntos'],
+                                ['bi-paperclip', 'Otros archivos adjuntos'],
                             ] as [$icon, $label])
                                 <div class="col-md-6">
                                     <div class="border rounded p-3 d-flex align-items-center gap-2 text-muted">

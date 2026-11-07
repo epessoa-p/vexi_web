@@ -65,6 +65,12 @@ class Plan extends Model
         'expenses' => 'caja',
         'suppliers' => 'compras',
         'purchases' => 'compras',
+        'lab_requests' => 'laboratorio',
+        'lab_results' => 'laboratorio',
+        'lab_studies' => 'laboratorio',
+        'hospitalizations' => 'hospitalizacion',
+        'kennels' => 'hospitalizacion',
+        'reports' => 'estadisticas',
     ];
 
     protected $fillable = [

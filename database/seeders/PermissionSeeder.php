@@ -49,6 +49,15 @@ class PermissionSeeder extends Seeder
             // Dependen del módulo 'compras'. purchases.edit = recibir, pagar, cerrar y anular.
             'suppliers' => ['label' => 'Proveedores', 'article' => 'los proveedores'],
             'purchases' => ['label' => 'Compras', 'article' => 'las compras, recepciones y pagos a proveedores', 'actions' => ['view', 'create', 'edit']],
+            // Dependen del módulo 'laboratorio'. lab_requests.edit cambia el estado; lab_results.edit carga resultados.
+            'lab_requests' => ['label' => 'Solicitudes de laboratorio', 'article' => 'las solicitudes de estudios', 'actions' => ['view', 'create', 'edit']],
+            'lab_results' => ['label' => 'Resultados de laboratorio', 'article' => 'los resultados de los estudios', 'actions' => ['edit']],
+            'lab_studies' => ['label' => 'Catálogo de estudios', 'article' => 'el catálogo de estudios y sus valores de referencia'],
+            // Dependen del módulo 'hospitalizacion'. create = admitir y dar de alta; edit = cuidados, tomas y costos.
+            'hospitalizations' => ['label' => 'Hospitalización', 'article' => 'las internaciones, sus cuidados y el alta', 'actions' => ['view', 'create', 'edit']],
+            'kennels' => ['label' => 'Espacios de internación', 'article' => 'las jaulas y espacios de internación'],
+            // Dependen del módulo 'estadisticas'. view = clínica y stock; finance = dinero: ingresos, ventas, utilidad y valor del inventario.
+            'reports' => ['label' => 'Reportes', 'article' => 'los reportes', 'actions' => ['view', 'finance', 'export']],
         ];
 
         $verbs = [
@@ -56,6 +65,8 @@ class PermissionSeeder extends Seeder
             'create' => ['Crear', 'Dar de alta'],
             'edit' => ['Editar', 'Modificar'],
             'delete' => ['Eliminar', 'Dar de baja'],
+            'finance' => ['Ver finanzas en', 'Consultar ingresos, ventas y utilidad en'],
+            'export' => ['Exportar', 'Exportar a Excel'],
         ];
 
         foreach ($modules as $module => $meta) {

@@ -43,7 +43,7 @@
                             </div>
                         </div>
                         <div id="billable" class="mt-3 d-none">
-                            <div class="small fw-semibold text-warning-emphasis mb-1"><i class="bi bi-clipboard2-pulse"></i> Consultas pendientes de cobro</div>
+                            <div class="small fw-semibold text-warning-emphasis mb-1"><i class="bi bi-clipboard2-pulse"></i> Pendiente de cobro</div>
                             <div id="billable-list" class="d-flex flex-column gap-1"></div>
                         </div>
                     </div>
@@ -96,7 +96,7 @@
                             <thead class="table-light"><tr><th class="ps-3">Ítem</th><th style="width: 4.5rem">Cant.</th><th style="width: 6rem">Precio</th><th style="width: 5.5rem">Desc.</th><th class="text-end pe-2">Total</th><th></th></tr></thead>
                             <tbody id="cart"></tbody>
                         </table>
-                        <p class="text-center text-muted small py-4 mb-0" id="cart-empty">Agrega productos, servicios o consultas.</p>
+                        <p class="text-center text-muted small py-4 mb-0" id="cart-empty">Agrega productos, servicios o lo atendido.</p>
                     </div>
                     <div class="card-footer bg-white">
                         <div class="d-flex justify-content-between small"><span>Subtotal</span><span id="subtotal">0</span></div>
@@ -181,13 +181,19 @@
         quantity: Number(l.quantity) || 1, unit_price: Number(l.unit_price) || 0, discount: Number(l.discount) || 0,
         product_id: l.product_id ? Number(l.product_id) : undefined, service_id: l.service_id ? Number(l.service_id) : undefined,
         consultation_id: l.consultation_id ? Number(l.consultation_id) : undefined,
+        lab_request_id: l.lab_request_id ? Number(l.lab_request_id) : undefined,
+        hospitalization_id: l.hospitalization_id ? Number(l.hospitalization_id) : undefined,
     }));
-    const addedConsultations = new Set(cart.map((l) => l.consultation_id).filter(Boolean));
+    // Una línea puede venir de algo ya atendido; su clave coincide con la de Billables.
+    const LINKS = { consultation_id: 'consulta', lab_request_id: 'estudio', hospitalization_id: 'internación' };
+    const linkField = (l) => Object.keys(LINKS).find((field) => l[field]);
+    const linkKey = (l) => { const field = linkField(l); return field ? field + ':' + l[field] : null; };
+    const added = new Set(cart.map(linkKey).filter(Boolean));
 
     // ---- Carrito ----
     function add(line) {
         // Un mismo producto o servicio de mostrador suma cantidad en vez de repetirse.
-        const same = cart.find((l) => !l.consultation_id && !line.consultation_id &&
+        const same = cart.find((l) => !linkKey(l) && !linkKey(line) &&
             ((line.product_id && l.product_id === line.product_id) || (line.service_id && l.service_id === line.service_id && l.type === 'service')));
         if (same) { same.quantity = round(same.quantity + (line.quantity || 1)); }
         else { cart.push(Object.assign({ quantity: 1, discount: 0 }, line)); }
@@ -199,11 +205,11 @@
         body.innerHTML = '';
         cart.forEach(function (line, index) {
             const total = Math.max(round(line.quantity * line.unit_price - line.discount), 0);
-            const short = line.stock !== undefined && !line.consultation_id && line.quantity > line.stock;
+            const short = line.stock !== undefined && !linkKey(line) && line.quantity > line.stock;
             const tr = document.createElement('tr');
             tr.innerHTML =
                 '<td class="ps-3 small"><div class="desc"></div>' + (short ? '<div class="text-danger">Stock: ' + line.stock + '</div>' : '') +
-                (line.consultation_id ? '<span class="badge bg-info-subtle text-info-emphasis">consulta</span>' : '') + '</td>' +
+                (linkField(line) ? '<span class="badge bg-info-subtle text-info-emphasis">' + LINKS[linkField(line)] + '</span>' : '') + '</td>' +
                 '<td><input type="number" class="form-control form-control-sm px-1" min="0.01" step="0.01" data-field="quantity"></td>' +
                 '<td><input type="number" class="form-control form-control-sm px-1" min="0" step="0.01" data-field="unit_price"></td>' +
                 '<td><input type="number" class="form-control form-control-sm px-1" min="0" step="0.01" data-field="discount"></td>' +
@@ -216,8 +222,9 @@
             });
             tr.querySelector('button').addEventListener('click', function () {
                 cart.splice(index, 1);
-                if (line.consultation_id && !cart.some((l) => l.consultation_id === line.consultation_id)) {
-                    addedConsultations.delete(line.consultation_id);
+                const key = linkKey(line);
+                if (key && !cart.some((l) => linkKey(l) === key)) {
+                    added.delete(key);
                     loadBillable();
                 }
                 render();
@@ -334,15 +341,15 @@
         list.innerHTML = '';
         $('billable').classList.add('d-none');
         if (!petSelect.value) return;
-        const consultations = (await json(urls.billable.replace('__ID__', petSelect.value))).filter((c) => !addedConsultations.has(c.id));
-        consultations.forEach(function (c) {
+        const pending = (await json(urls.billable.replace('__ID__', petSelect.value))).filter((c) => !added.has(c.key));
+        pending.forEach(function (c) {
             const total = c.lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
             const row = document.createElement('div');
             row.className = 'd-flex justify-content-between align-items-center border rounded px-2 py-1 small';
             row.innerHTML = '<span></span><button type="button" class="btn btn-sm btn-outline-primary">Agregar ' + money(total) + '</button>';
             row.querySelector('span').textContent = c.label + ' (' + c.lines.length + ' ítems)';
             row.querySelector('button').addEventListener('click', function () {
-                addedConsultations.add(c.id);
+                added.add(c.key);
                 c.lines.forEach((l) => cart.push(Object.assign({ discount: 0 }, l)));
                 render();
                 row.remove();
@@ -350,7 +357,7 @@
             });
             list.appendChild(row);
         });
-        $('billable').classList.toggle('d-none', consultations.length === 0);
+        $('billable').classList.toggle('d-none', pending.length === 0);
     }
     petSelect.addEventListener('change', loadBillable);
     document.addEventListener('pos:selected', (e) => loadPets(e.detail.id));
@@ -368,7 +375,7 @@
             hidden.appendChild(input);
         };
         cart.forEach(function (l, i) {
-            ['type', 'product_id', 'service_id', 'consultation_id', 'description', 'quantity', 'unit_price', 'discount']
+            ['type', 'product_id', 'service_id', 'consultation_id', 'lab_request_id', 'hospitalization_id', 'description', 'quantity', 'unit_price', 'discount']
                 .forEach((key) => field('items[' + i + '][' + key + ']', l[key]));
         });
         document.querySelectorAll('.payment-row').forEach(function (row, i) {

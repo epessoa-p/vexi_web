@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Breed;
 use App\Models\Company;
 use App\Models\ExpenseCategory;
+use App\Models\LabStudyType;
 use App\Models\PaymentMethod;
 use App\Models\ProductCategory;
 use App\Models\Service;
@@ -76,6 +77,28 @@ class ClinicalCatalog
         ['Leucemia felina (FeLV)', ['Felino'], 2, 21, 365, 8],
     ];
 
+    /**
+     * Estudios base: nombre => [categoría, parámetros [nombre, unidad]]. Los
+     * valores de referencia quedan vacíos a propósito: dependen de la especie,
+     * del método y del laboratorio, y los define cada veterinaria.
+     */
+    public const LAB_STUDIES = [
+        'Hemograma' => ['hematology', [
+            ['Hematocrito', '%'], ['Hemoglobina', 'g/dL'], ['Eritrocitos', '×10⁶/µL'], ['Leucocitos', '×10³/µL'],
+            ['Neutrófilos', '%'], ['Linfocitos', '%'], ['Monocitos', '%'], ['Eosinófilos', '%'], ['Plaquetas', '×10³/µL'],
+        ]],
+        'Bioquímica sanguínea' => ['biochemistry', [
+            ['Glucosa', 'mg/dL'], ['Urea (BUN)', 'mg/dL'], ['Creatinina', 'mg/dL'], ['ALT', 'U/L'], ['Fosfatasa alcalina', 'U/L'],
+            ['Proteínas totales', 'g/dL'], ['Albúmina', 'g/dL'], ['Bilirrubina total', 'mg/dL'],
+        ]],
+        'Análisis de orina' => ['urine', [
+            ['Densidad', null], ['pH', null], ['Proteínas', null], ['Glucosa', null], ['Cetonas', null], ['Sangre', null], ['Sedimento', null],
+        ]],
+        'Coproparasitológico' => ['parasitology', [['Método', null], ['Parásitos observados', null]]],
+        'Radiografía' => ['imaging', []],
+        'Ecografía' => ['imaging', []],
+    ];
+
     /** Categorías de productos base (§7.2). */
     public const PRODUCT_CATEGORIES = [
         'Medicamentos', 'Antibióticos', 'Antiparasitarios', 'Vacunas', 'Alimentos',
@@ -98,6 +121,20 @@ class ClinicalCatalog
     public static function seedFor(Company|int $company): void
     {
         $companyId = $company instanceof Company ? $company->id : $company;
+
+        foreach (self::LAB_STUDIES as $name => [$category, $parameters]) {
+            $study = LabStudyType::forCompany($companyId)->firstOrCreate(
+                ['company_id' => $companyId, 'name' => $name],
+                ['category' => $category, 'active' => true]
+            );
+
+            // Solo al crearlo: no se pisan los parámetros que la veterinaria editó.
+            if ($study->wasRecentlyCreated) {
+                foreach ($parameters as $sort => [$parameter, $unit]) {
+                    $study->parameters()->create(['company_id' => $companyId, 'name' => $parameter, 'unit' => $unit, 'sort' => $sort]);
+                }
+            }
+        }
 
         foreach (self::PAYMENT_METHODS as $sort => [$name, $type, $reference]) {
             PaymentMethod::forCompany($companyId)->firstOrCreate(

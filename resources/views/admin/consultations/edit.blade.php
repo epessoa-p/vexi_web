@@ -244,6 +244,9 @@
                     <a href="{{ route('dewormings.create', ['pet_id' => $pet->id, 'consultation_id' => $c->id]) }}" target="_blank" class="btn btn-sm btn-outline-success flex-fill"><i class="bi bi-bug"></i> Desparasitar</a>
                 </div>
             @endif
+            @if($tenantCompany?->planAllows('laboratorio') && auth()->user()->hasPermissionInCompany('lab_requests.create', $tenantCompany))
+                <a href="{{ route('lab.create', ['pet_id' => $pet->id, 'consultation_id' => $c->id]) }}" target="_blank" class="btn btn-sm btn-outline-primary w-100 mb-3"><i class="bi bi-eyedropper"></i> Solicitar estudio</a>
+            @endif
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-body small">
                     <h6 class="fw-bold mb-3"><i class="bi bi-journal-medical"></i> Antecedentes</h6>

@@ -32,6 +32,13 @@
                     <i class="bi bi-house"></i> Dashboard
                 </a>
             </li>
+            @if($currentCompany && ($can('reports.view') || $can('reports.finance')) && $hasModule('estadisticas'))
+                <li class="nav-item">
+                    <a class="nav-link app-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
+                        <i class="bi bi-bar-chart-line"></i> Reportes
+                    </a>
+                </li>
+            @endif
         </ul>
 
         {{-- Los módulos clínicos son de UNA veterinaria: en Modo Global no se muestran. --}}
@@ -40,6 +47,10 @@
             $canConsultations = $currentCompany && $can('consultations.view') && $hasModule('consultas');
             $canHealth = $currentCompany && $can('vaccinations.view') && $hasModule('vacunas');
             $canVaccineCatalog = $currentCompany && $can('vaccines.view') && $hasModule('vacunas');
+            $canLab = $currentCompany && $can('lab_requests.view') && $hasModule('laboratorio');
+            $canLabStudies = $currentCompany && $can('lab_studies.view') && $hasModule('laboratorio');
+            $canHospital = $currentCompany && $can('hospitalizations.view') && $hasModule('hospitalizacion');
+            $canKennels = $currentCompany && $can('kennels.view') && $hasModule('hospitalizacion');
             $canProducts = $currentCompany && $can('products.view') && $hasModule('inventario');
             $canInventory = $currentCompany && $can('inventory.view') && $hasModule('inventario');
             $canSales = $currentCompany && $can('sales.view') && $hasModule('pos');
@@ -49,7 +60,7 @@
             $canPurchases = $currentCompany && $can('purchases.view') && $hasModule('compras');
             $canSuppliers = $currentCompany && $can('suppliers.view') && $hasModule('compras');
         @endphp
-        @if($currentCompany && ($can('clients.view') || $can('pets.view') || $canAgenda || $canConsultations || $canHealth))
+        @if($currentCompany && ($can('clients.view') || $can('pets.view') || $canAgenda || $canConsultations || $canHealth || $canLab || $canHospital))
             <div class="sidebar-section-title mt-4">Clínica</div>
             <ul class="nav flex-column gap-1">
                 @if($canAgenda)
@@ -68,6 +79,20 @@
                     <li class="nav-item">
                         <a class="nav-link app-link {{ request()->routeIs('consultations.*') ? 'active' : '' }}" href="{{ route('consultations.index') }}">
                             <i class="bi bi-clipboard2-pulse"></i> Consultas
+                        </a>
+                    </li>
+                @endif
+                @if($canHospital)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('hospitalizations.*') ? 'active' : '' }}" href="{{ route('hospitalizations.index') }}">
+                            <i class="bi bi-hospital"></i> Hospitalización
+                        </a>
+                    </li>
+                @endif
+                @if($canLab)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('lab.*') ? 'active' : '' }}" href="{{ route('lab.index') }}">
+                            <i class="bi bi-eyedropper"></i> Laboratorio
                         </a>
                     </li>
                 @endif
@@ -240,13 +265,27 @@
             @endif
         </ul>
 
-        @if($currentCompany && ($can('species.view') || $can('services.view') || $canVaccineCatalog || $canProducts || $canSales || $canExpenses))
+        @if($currentCompany && ($can('species.view') || $can('services.view') || $canVaccineCatalog || $canLabStudies || $canKennels || $canProducts || $canSales || $canExpenses))
             <div class="sidebar-section-title mt-4">Configuración</div>
             <ul class="nav flex-column gap-1">
                 @if($can('services.view'))
                     <li class="nav-item">
                         <a class="nav-link app-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">
                             <i class="bi bi-card-checklist"></i> Servicios
+                        </a>
+                    </li>
+                @endif
+                @if($canKennels)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('kennels.*') ? 'active' : '' }}" href="{{ route('kennels.index') }}">
+                            <i class="bi bi-grid-3x3-gap"></i> Espacios de internación
+                        </a>
+                    </li>
+                @endif
+                @if($canLabStudies)
+                    <li class="nav-item">
+                        <a class="nav-link app-link {{ request()->routeIs('lab-studies.*') ? 'active' : '' }}" href="{{ route('lab-studies.index') }}">
+                            <i class="bi bi-clipboard2-data"></i> Estudios de laboratorio
                         </a>
                     </li>
                 @endif
@@ -443,12 +482,21 @@
         <nav class="p-3">
             <ul class="nav flex-column gap-1">
                 <li><a class="nav-link app-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a></li>
+                    @if($currentCompany && ($can('reports.view') || $can('reports.finance')) && $hasModule('estadisticas'))
+                        <li class="nav-item"><a class="nav-link app-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">Reportes</a></li>
+                    @endif
                 @if($canAgenda)
                     <li><a class="nav-link app-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}" href="{{ route('appointments.index') }}">Agenda</a></li>
                     <li><a class="nav-link app-link {{ request()->routeIs('waiting-room.*') ? 'active' : '' }}" href="{{ route('waiting-room.index') }}">Sala de espera</a></li>
                 @endif
                 @if($canConsultations)
                     <li><a class="nav-link app-link {{ request()->routeIs('consultations.*') ? 'active' : '' }}" href="{{ route('consultations.index') }}">Consultas</a></li>
+                @endif
+                @if($canHospital)
+                    <li><a class="nav-link app-link {{ request()->routeIs('hospitalizations.*') ? 'active' : '' }}" href="{{ route('hospitalizations.index') }}">Hospitalización</a></li>
+                @endif
+                @if($canLab)
+                    <li><a class="nav-link app-link {{ request()->routeIs('lab.*') ? 'active' : '' }}" href="{{ route('lab.index') }}">Laboratorio</a></li>
                 @endif
                 @if($canHealth)
                     <li><a class="nav-link app-link {{ request()->routeIs('health.*', 'vaccinations.*', 'dewormings.*') ? 'active' : '' }}" href="{{ route('health.index') }}">Vacunación</a></li>
@@ -481,6 +529,12 @@
                 @endif
                 @if($currentCompany && $can('services.view'))
                     <li><a class="nav-link app-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">Servicios</a></li>
+                @endif
+                @if($canKennels)
+                    <li><a class="nav-link app-link {{ request()->routeIs('kennels.*') ? 'active' : '' }}" href="{{ route('kennels.index') }}">Espacios de internación</a></li>
+                @endif
+                @if($canLabStudies)
+                    <li><a class="nav-link app-link {{ request()->routeIs('lab-studies.*') ? 'active' : '' }}" href="{{ route('lab-studies.index') }}">Estudios de laboratorio</a></li>
                 @endif
                 @if($canVaccineCatalog)
                     <li><a class="nav-link app-link {{ request()->routeIs('vaccines.*') ? 'active' : '' }}" href="{{ route('vaccines.index') }}">Vacunas</a></li>

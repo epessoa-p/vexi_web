@@ -95,6 +95,16 @@ class Pet extends Model
         return $this->hasMany(Deworming::class)->orderByDesc('applied_at')->orderByDesc('id');
     }
 
+    public function hospitalizations(): HasMany
+    {
+        return $this->hasMany(Hospitalization::class)->orderByDesc('admitted_at');
+    }
+
+    public function labRequests(): HasMany
+    {
+        return $this->hasMany(LabRequest::class)->orderByDesc('requested_at')->orderByDesc('id');
+    }
+
     public function consultations(): HasMany
     {
         return $this->hasMany(Consultation::class)->orderByDesc('started_at');

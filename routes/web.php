@@ -32,11 +32,16 @@ use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\CashController;
 use App\Http\Controllers\Admin\ReceivableController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\SalesSettingsController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\PayableController;
+use App\Http\Controllers\Admin\LabRequestController;
+use App\Http\Controllers\Admin\LabStudyTypeController;
+use App\Http\Controllers\Admin\HospitalizationController;
+use App\Http\Controllers\Admin\KennelController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -194,9 +199,9 @@ Route::middleware('auth')->group(function () {
         Route::prefix('clientes')->name('clients.')->group(function () {
             Route::get('/', [ClientController::class, 'index'])->middleware('check-permission:clients.view')->name('index');
             Route::get('/create', [ClientController::class, 'create'])->middleware('check-permission:clients.create')->name('create');
-            Route::get('/buscar', [ClientController::class, 'search'])->middleware('check-permission:clients.view,pets.create,pets.edit,sales.create')->name('search');
+            Route::get('/buscar', [ClientController::class, 'search'])->middleware('check-permission:clients.view,pets.create,pets.edit,sales.create,lab_requests.create,hospitalizations.create')->name('search');
             Route::get('/{client}/mascotas', [ClientController::class, 'pets'])
-                ->middleware('check-permission:pets.view,appointments.create,appointments.edit,consultations.create,sales.create')->name('pets');
+                ->middleware('check-permission:pets.view,appointments.create,appointments.edit,consultations.create,sales.create,lab_requests.create,hospitalizations.create')->name('pets');
             Route::post('/', [ClientController::class, 'store'])->middleware('check-permission:clients.create')->name('store');
             Route::get('/{client}', [ClientController::class, 'show'])->middleware('check-permission:clients.view')->name('show');
             Route::get('/{client}/edit', [ClientController::class, 'edit'])->middleware('check-permission:clients.edit')->name('edit');
@@ -266,6 +271,13 @@ Route::middleware('auth')->group(function () {
         });
 
         // Consultas veterinarias: gobernadas por el módulo 'consultas' del plan.
+        // Cada pantalla valida además su permiso y los módulos del plan (ReportController::sections).
+        Route::middleware(['plan:estadisticas', 'check-permission:reports.view,reports.finance'])->prefix('reportes')->name('reports.')->group(function () {
+            Route::get('/{section?}', [ReportController::class, 'index'])->whereIn('section', ['resumen', 'finanzas', 'ventas', 'clinica', 'inventario'])->name('index');
+            Route::get('/{section}/excel', [ReportController::class, 'export'])->whereIn('section', ['resumen', 'finanzas', 'ventas', 'clinica', 'inventario'])
+                ->middleware('check-permission:reports.export')->name('export');
+        });
+
         Route::middleware('plan:consultas')->prefix('consultas')->name('consultations.')->group(function () {
             Route::get('/', [ConsultationController::class, 'index'])->middleware('check-permission:consultations.view')->name('index');
             Route::get('/create', [ConsultationController::class, 'create'])->middleware('check-permission:consultations.create')->name('create');
@@ -328,6 +340,61 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', [SalesSettingsController::class, 'expenseCategories'])->middleware('check-permission:expenses.view')->name('index');
                 Route::post('/', [SalesSettingsController::class, 'storeExpenseCategory'])->middleware('check-permission:expenses.edit')->name('store');
                 Route::put('/{category}', [SalesSettingsController::class, 'updateExpenseCategory'])->middleware('check-permission:expenses.edit')->name('update');
+            });
+        });
+
+        // Laboratorio y estudios: gobernados por el módulo 'laboratorio' del plan.
+        Route::middleware('plan:laboratorio')->group(function () {
+            Route::prefix('laboratorio')->name('lab.')->group(function () {
+                Route::get('/', [LabRequestController::class, 'index'])->middleware('check-permission:lab_requests.view')->name('index');
+                Route::get('/solicitar', [LabRequestController::class, 'create'])->middleware('check-permission:lab_requests.create')->name('create');
+                Route::post('/', [LabRequestController::class, 'store'])->middleware('check-permission:lab_requests.create')->name('store');
+                Route::get('/mascotas/{pet}/consultas', [LabRequestController::class, 'petConsultations'])->middleware('check-permission:lab_requests.create')->name('pet-consultations');
+                Route::get('/{labRequest}', [LabRequestController::class, 'show'])->middleware('check-permission:lab_requests.view')->name('show');
+                Route::get('/{labRequest}/informe', [LabRequestController::class, 'report'])->middleware('check-permission:lab_requests.view')->name('report');
+                Route::put('/{labRequest}/resultados', [LabRequestController::class, 'saveResults'])->middleware('check-permission:lab_results.edit')->name('results.save');
+                Route::post('/{labRequest}/estado/{action}', [LabRequestController::class, 'transition'])->middleware('check-permission:lab_requests.edit')->name('transition');
+                Route::post('/{labRequest}/adjuntos', [LabRequestController::class, 'storeAttachment'])->middleware('check-permission:lab_results.edit')->name('attachments.store');
+                Route::get('/{labRequest}/adjuntos/{attachment}', [LabRequestController::class, 'downloadAttachment'])->middleware('check-permission:lab_requests.view')->name('attachments.show');
+                Route::delete('/{labRequest}/adjuntos/{attachment}', [LabRequestController::class, 'destroyAttachment'])->middleware('check-permission:lab_results.edit')->name('attachments.destroy');
+            });
+
+            Route::prefix('configuracion/estudios')->name('lab-studies.')->group(function () {
+                Route::get('/', [LabStudyTypeController::class, 'index'])->middleware('check-permission:lab_studies.view')->name('index');
+                Route::get('/create', [LabStudyTypeController::class, 'create'])->middleware('check-permission:lab_studies.create')->name('create');
+                Route::post('/', [LabStudyTypeController::class, 'store'])->middleware('check-permission:lab_studies.create')->name('store');
+                Route::get('/{studyType}/edit', [LabStudyTypeController::class, 'edit'])->middleware('check-permission:lab_studies.edit')->name('edit');
+                Route::put('/{studyType}', [LabStudyTypeController::class, 'update'])->middleware('check-permission:lab_studies.edit')->name('update');
+                Route::delete('/{studyType}', [LabStudyTypeController::class, 'destroy'])->middleware('check-permission:lab_studies.delete')->name('destroy');
+            });
+        });
+
+        // Hospitalización: gobernada por el módulo 'hospitalizacion' del plan.
+        // `create` admite y da el alta; `edit` registra cuidados, tomas y costos.
+        Route::middleware('plan:hospitalizacion')->group(function () {
+            Route::prefix('hospitalizacion')->name('hospitalizations.')->group(function () {
+                Route::get('/', [HospitalizationController::class, 'index'])->middleware('check-permission:hospitalizations.view')->name('index');
+                Route::get('/ingresar', [HospitalizationController::class, 'create'])->middleware('check-permission:hospitalizations.create')->name('create');
+                Route::post('/', [HospitalizationController::class, 'store'])->middleware('check-permission:hospitalizations.create')->name('store');
+                Route::post('/tomas/{dose}/aplicar', [HospitalizationController::class, 'giveDose'])->middleware('check-permission:hospitalizations.edit')->name('doses.give');
+                Route::post('/tomas/{dose}/omitir', [HospitalizationController::class, 'skipDose'])->middleware('check-permission:hospitalizations.edit')->name('doses.skip');
+                Route::get('/{hospitalization}', [HospitalizationController::class, 'show'])->middleware('check-permission:hospitalizations.view')->name('show');
+                Route::get('/{hospitalization}/informe', [HospitalizationController::class, 'report'])->middleware('check-permission:hospitalizations.view')->name('report');
+                Route::post('/{hospitalization}/espacio', [HospitalizationController::class, 'moveKennel'])->middleware('check-permission:hospitalizations.edit')->name('move');
+                Route::post('/{hospitalization}/tratamientos', [HospitalizationController::class, 'storeTreatment'])->middleware('check-permission:hospitalizations.edit')->name('treatments.store');
+                Route::post('/{hospitalization}/tratamientos/{treatment}/suspender', [HospitalizationController::class, 'stopTreatment'])->middleware('check-permission:hospitalizations.edit')->name('treatments.stop');
+                Route::post('/{hospitalization}/registros', [HospitalizationController::class, 'storeRecord'])->middleware('check-permission:hospitalizations.edit')->name('records.store');
+                Route::post('/{hospitalization}/cargos', [HospitalizationController::class, 'storeCharge'])->middleware('check-permission:hospitalizations.edit')->name('charges.store');
+                Route::delete('/{hospitalization}/cargos/{charge}', [HospitalizationController::class, 'destroyCharge'])->middleware('check-permission:hospitalizations.edit')->name('charges.destroy');
+                Route::post('/{hospitalization}/alta', [HospitalizationController::class, 'discharge'])->middleware('check-permission:hospitalizations.create')->name('discharge');
+                Route::post('/{hospitalization}/anular', [HospitalizationController::class, 'cancel'])->middleware('check-permission:hospitalizations.create')->name('cancel');
+            });
+
+            Route::prefix('configuracion/espacios')->name('kennels.')->group(function () {
+                Route::get('/', [KennelController::class, 'index'])->middleware('check-permission:kennels.view')->name('index');
+                Route::post('/', [KennelController::class, 'store'])->middleware('check-permission:kennels.create')->name('store');
+                Route::put('/{kennel}', [KennelController::class, 'update'])->middleware('check-permission:kennels.edit')->name('update');
+                Route::delete('/{kennel}', [KennelController::class, 'destroy'])->middleware('check-permission:kennels.delete')->name('destroy');
             });
         });
 

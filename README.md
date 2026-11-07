@@ -138,6 +138,10 @@ permisos.
 | Agenda y citas | `/agenda` | `appointments.*` | `agenda` |
 | Sala de espera | `/sala-de-espera` | `appointments.*` | `agenda` |
 | Consultas, recetas y seguimiento | `/consultas` | `consultations.*` | `consultas` |
+| Laboratorio: solicitudes, resultados e informe | `/laboratorio` | `lab_requests.*`, `lab_results.edit` | `laboratorio` |
+| Catálogo de estudios y valores de referencia | `/configuracion/estudios` | `lab_studies.*` | `laboratorio` |
+| Hospitalización: admisión, tratamientos, cuidados, costos y alta | `/hospitalizacion` | `hospitalizations.*` | `hospitalizacion` |
+| Jaulas y espacios de internación | `/configuracion/espacios` | `kennels.*` | `hospitalizacion` |
 | Vacunación (calendario, aplicaciones, desparasitaciones, carnet) | `/vacunacion`, `/mascotas/{id}/carnet` | `vaccinations.*` | `vacunas` |
 | Catálogo de vacunas y protocolos | `/configuracion/vacunas` | `vaccines.*` | `vacunas` |
 | Productos y kardex | `/inventario/productos` | `products.*` | `inventario` |
@@ -228,9 +232,13 @@ Cada veterinaria nueva arranca con un catálogo de especies y razas
   `returnItems`, `cancel`), que en una sola transacción mantiene coherentes la
   venta, el stock (kardex) y la caja. Las ventas no se borran: se anulan.
 - **Qué descuenta stock lo decide el servidor:** un producto de mostrador sí;
-  uno que viene de la consulta (insumo o medicamento dispensado) ya salió del
-  inventario y solo se cobra. Una consulta se cobra una sola vez
-  (`consultations.sale_id`); al anular la venta queda otra vez pendiente.
+  uno que viene de una consulta o internación ya salió del inventario y solo se
+  cobra.
+- **Pendiente de cobro** (`App\Support\Billables`): al elegir la mascota, el POS
+  ofrece sus consultas finalizadas, estudios no anulados e internaciones
+  cerradas. Cada uno se cobra una sola vez (`sale_id`), siempre al propietario
+  de la mascota; al anular la venta queda otra vez pendiente. El cajero puede
+  ajustar precios o quitar líneas en el carrito.
 - **Pagos:** pago mixto; si se entrega de más, el excedente es vuelto y solo
   puede salir del efectivo. Con saldo pendiente la venta es a crédito y exige
   cliente; los abonos posteriores entran por la caja como "Cobro de deuda".
@@ -260,3 +268,47 @@ Cada veterinaria nueva arranca con un catálogo de especies y razas
 - **Pagos**: parciales o totales, nunca por encima del saldo; si salen de una
   caja abierta quedan como egreso en su arqueo. Una compra solo se anula si no
   tiene recepciones ni pagos.
+
+### Laboratorio
+
+- Cada estudio elegido crea su propia solicitud: Solicitado → En proceso →
+  Completado → Entregado, más Anulado (con motivo). Guardar resultados la pone
+  en proceso.
+- Cada resultado **copia** nombre, unidad y referencia: editar el catálogo no
+  altera informes ya emitidos. Si el valor es numérico y hay rango, se marca
+  alto o bajo (`LabResult::flag`).
+- Completado, el resultado queda bloqueado. Para corregirlo se anula con motivo
+  y se solicita de nuevo; ya entregado no se anula.
+- El catálogo base trae estudios y parámetros **sin valores de referencia ni
+  precio**, porque dependen de especie, método, laboratorio y plaza: los define
+  cada veterinaria.
+- Un estudio se puede cobrar desde que se solicita. Anular uno ya cobrado no
+  toca la venta: la ficha avisa y la devolución se registra aparte, porque quien
+  corrige un resultado no siempre maneja caja.
+- Los adjuntos van al disco privado (`storage/app/private/lab`) y solo se
+  sirven por `lab.attachments.show`, con sesión, permiso y empresa activa. La
+  ruta automática `/storage` del disco privado está desactivada.
+
+### Hospitalización
+
+- Un paciente tiene una sola internación activa y un espacio aloja a un solo
+  paciente. Estados: Internado → Alta o Fallecido, más Anulada (con motivo).
+- Un tratamiento genera sus tomas por adelantado, de la primera toma a la fecha
+  final inclusive, con un tope de `Hospitalizations::MAX_DOSES` (200).
+- Aplicar una toma con producto descuenta stock (FEFO, motivo `hospitalization`)
+  y crea su cargo al precio de venta. La toma se registra aunque falte stock: el
+  saldo queda en negativo, porque el medicamento ya se administró. Una toma
+  aplicada no se revierte y su cargo no se quita.
+- Omitir una toma exige motivo. Suspender un tratamiento cancela sus tomas
+  pendientes y conserva las ya registradas.
+- Los registros de cuidados actualizan el estado del paciente, y el peso pasa a
+  la ficha de la mascota.
+- La estadía se cuenta por día o fracción (`stayDays`). Se cobra en el POS solo
+  después del alta o el fallecimiento, con el total definitivo; las tomas de un
+  mismo producto se agrupan en una línea. Un adelanto durante la internación se
+  registra aparte, como otro concepto: no se descuenta solo del total.
+- El alta cancela las tomas pendientes, libera el espacio y bloquea la
+  internación. Fallecimiento también marca a la mascota. Solo se anula un ingreso
+  sin registros ni tomas aplicadas.
+- `hospitalizations.edit` cubre el cuidado diario; admitir, dar de alta y anular
+  piden `hospitalizations.create`.

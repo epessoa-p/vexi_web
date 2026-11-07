@@ -1,8 +1,9 @@
-@extends('layouts.app')
+{{-- Sin sesión no hay menú: el layout de la app necesita un usuario. --}}
+@extends(auth()->check() ? 'layouts.app' : 'layouts.base')
 
 @section('title', 'Acceso Denegado')
 
-@section('page')
+@section(auth()->check() ? 'page' : 'content')
 <div class="container-fluid">
     <div class="d-flex align-items-center justify-content-center" style="min-height: 60vh;">
         <div class="text-center">

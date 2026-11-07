@@ -5,11 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Client;
-use App\Models\Consultation;
+use App\Models\SaleItem;
 use App\Models\PaymentMethod;
 use App\Models\Pet;
 use App\Models\Product;
 use App\Models\Service;
+use App\Support\Billables;
 use App\Support\Cash;
 use App\Support\Sales;
 use App\Support\Tenancy;
@@ -50,10 +51,12 @@ class PosController extends Controller
             'due_date' => 'nullable|date|after_or_equal:today',
             'notes' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
-            'items.*.type' => ['required', Rule::in(['product', 'service', 'consultation', 'other'])],
+            'items.*.type' => ['required', Rule::in(array_keys(SaleItem::TYPES))],
             'items.*.product_id' => ['nullable', 'required_if:items.*.type,product', $exists('products')->whereNull('deleted_at')],
             'items.*.service_id' => ['nullable', $exists('services')],
             'items.*.consultation_id' => ['nullable', $exists('consultations')->where('status', 'finished')],
+            'items.*.lab_request_id' => ['nullable', $exists('lab_requests')->whereNot('status', 'cancelled')],
+            'items.*.hospitalization_id' => ['nullable', $exists('hospitalizations')->whereIn('status', ['discharged', 'deceased'])],
             'items.*.description' => 'required|string|max:255',
             'items.*.quantity' => 'required|numeric|min:0.01|max:99999',
             'items.*.unit_price' => 'required|numeric|min:0|max:9999999',
@@ -81,8 +84,8 @@ class PosController extends Controller
             'notes' => $validated['notes'] ?? null,
             'items' => collect($validated['items'])->map(fn (array $item) => $item + [
                 // El servidor decide qué descuenta stock: un producto de mostrador
-                // sí; uno que viene de la consulta ya salió del inventario.
-                'affects_stock' => $item['type'] === 'product' && empty($item['consultation_id']),
+                // sí; uno que viene de una consulta o internación ya salió del inventario.
+                'affects_stock' => $item['type'] === 'product' && empty($item['consultation_id']) && empty($item['hospitalization_id']),
             ])->values()->all(),
             'payments' => collect($validated['payments'] ?? [])->map(fn (array $p) => [
                 'method' => $methods[$p['payment_method_id']],
@@ -95,52 +98,9 @@ class PosController extends Controller
             ->with('success', "Venta {$sale->code} registrada.");
     }
 
-    /**
-     * Consultas finalizadas de la mascota todavía sin cobrar, con sus líneas:
-     * el servicio de la consulta, los procedimientos, los insumos y lo
-     * dispensado (estos últimos ya salieron del stock: solo se cobran).
-     */
+    /** Lo atendido a la mascota que todavía no se cobró. */
     public function billable(Pet $pet)
     {
-        $default = Service::where('active', true)->where('category', 'consulta')->orderBy('id')->first();
-        $withInventory = (bool) app(Tenancy::class)->company()?->planAllows('inventario');
-
-        $consultations = Consultation::with(['appointment.service', 'procedures', 'supplies.product', 'prescriptionItems.product', 'diagnoses'])
-            ->where('pet_id', $pet->id)->where('status', 'finished')->whereNull('sale_id')
-            ->latest('started_at')->get();
-
-        return response()->json($consultations->map(function (Consultation $c) use ($default, $withInventory) {
-            $service = $c->appointment?->service ?? $default;
-            $lines = collect([[
-                'type' => 'consultation',
-                'consultation_id' => $c->id,
-                'service_id' => $service?->id,
-                'description' => 'Consulta ' . $c->started_at->format('d/m') . ($service ? " · {$service->name}" : ''),
-                'quantity' => 1,
-                'unit_price' => (float) ($service?->price ?? 0),
-            ]]);
-
-            foreach ($c->procedures as $procedure) {
-                $lines->push(['type' => 'consultation', 'consultation_id' => $c->id, 'description' => "Procedimiento: {$procedure->name}",
-                    'quantity' => 1, 'unit_price' => (float) $procedure->cost]);
-            }
-
-            if ($withInventory) {
-                foreach ($c->supplies as $supply) {
-                    $lines->push(['type' => 'product', 'consultation_id' => $c->id, 'product_id' => $supply->product_id,
-                        'description' => $supply->product?->label, 'quantity' => (float) $supply->quantity, 'unit_price' => (float) $supply->product?->sale_price]);
-                }
-                foreach ($c->prescriptionItems->whereNotNull('dispensed_at') as $item) {
-                    $lines->push(['type' => 'product', 'consultation_id' => $c->id, 'product_id' => $item->product_id,
-                        'description' => $item->product?->label ?? $item->medication, 'quantity' => (float) $item->dispensed_quantity, 'unit_price' => (float) $item->product?->sale_price]);
-                }
-            }
-
-            return [
-                'id' => $c->id,
-                'label' => $c->started_at->format('d/m/Y') . ' · ' . ($c->primary_diagnosis?->description ?? $c->reason ?? 'Consulta'),
-                'lines' => $lines->values(),
-            ];
-        }));
+        return response()->json(Billables::forPet($pet));
     }
 }

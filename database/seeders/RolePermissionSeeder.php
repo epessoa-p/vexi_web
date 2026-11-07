@@ -20,6 +20,7 @@ class RolePermissionSeeder extends Seeder
     {
         $matrix = [
             'admin' => [
+                'reports.view', 'reports.finance', 'reports.export',
                 'companies.view',
                 'users.view', 'users.create', 'users.edit', 'users.delete',
                 'cargos.view', 'cargos.create', 'cargos.edit', 'cargos.delete',
@@ -42,8 +43,13 @@ class RolePermissionSeeder extends Seeder
                 'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.delete',
                 'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete',
                 'purchases.view', 'purchases.create', 'purchases.edit',
+                'lab_requests.view', 'lab_requests.create', 'lab_requests.edit', 'lab_results.edit',
+                'lab_studies.view', 'lab_studies.create', 'lab_studies.edit', 'lab_studies.delete',
+                'hospitalizations.view', 'hospitalizations.create', 'hospitalizations.edit',
+                'kennels.view', 'kennels.create', 'kennels.edit', 'kennels.delete',
             ],
             'manager' => [
+                'reports.view', 'reports.finance', 'reports.export',
                 'users.view',
                 'cargos.view',
                 'personal.view', 'personal.create', 'personal.edit',
@@ -64,6 +70,10 @@ class RolePermissionSeeder extends Seeder
                 'expenses.view', 'expenses.create', 'expenses.edit',
                 'suppliers.view', 'suppliers.create', 'suppliers.edit',
                 'purchases.view', 'purchases.create', 'purchases.edit',
+                'lab_requests.view',
+                'lab_studies.view',
+                'hospitalizations.view',
+                'kennels.view', 'kennels.create', 'kennels.edit',
             ],
             'cashier' => [
                 'branches.view',
@@ -93,8 +103,11 @@ class RolePermissionSeeder extends Seeder
                 'products.view',
                 'sales.view', 'sales.create',
                 'cash.view',
+                'lab_requests.view',
+                'hospitalizations.view',
             ],
             'veterinarian' => [
+                'reports.view',
                 'branches.view',
                 'personal.view',
                 'clients.view', 'clients.create', 'clients.edit',
@@ -107,6 +120,10 @@ class RolePermissionSeeder extends Seeder
                 'vaccines.view', 'vaccines.create', 'vaccines.edit',
                 'products.view',
                 'inventory.view',
+                'lab_requests.view', 'lab_requests.create', 'lab_requests.edit', 'lab_results.edit',
+                'lab_studies.view', 'lab_studies.create', 'lab_studies.edit',
+                'hospitalizations.view', 'hospitalizations.create', 'hospitalizations.edit',
+                'kennels.view', 'kennels.create', 'kennels.edit',
             ],
             'vet_assistant' => [
                 'personal.view',
@@ -119,8 +136,13 @@ class RolePermissionSeeder extends Seeder
                 'vaccines.view',
                 'products.view',
                 'inventory.view',
+                'lab_requests.view', 'lab_requests.create', 'lab_requests.edit', 'lab_results.edit',
+                'lab_studies.view',
+                'hospitalizations.view', 'hospitalizations.edit',
+                'kennels.view',
             ],
             'inventory_manager' => [
+                'reports.view', 'reports.export',
                 'branches.view',
                 'personal.view',
                 'products.view', 'products.create', 'products.edit', 'products.delete',

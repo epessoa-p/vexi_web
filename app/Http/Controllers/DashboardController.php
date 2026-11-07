@@ -8,14 +8,14 @@ use App\Models\Branch;
 use App\Models\Caja;
 use App\Models\Appointment;
 use App\Models\Deworming;
-use App\Models\Expense;
+use App\Models\Hospitalization;
+use App\Models\HospitalizationDose;
 use App\Models\Sale;
-use App\Models\SalePayment;
-use App\Models\SaleReturn;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\ProductBatch;
 use App\Models\Vaccination;
+use App\Support\Reports\ReportData;
 
 class DashboardController extends Controller
 {
@@ -65,6 +65,20 @@ class DashboardController extends Controller
             ];
         }
 
+        // Hospitalización: pacientes internados y tomas atrasadas.
+        $hospital = null;
+        if ($company && $company->planAllows('hospitalizacion')
+            && $user->hasPermissionInCompany('hospitalizations.view', $company)) {
+            $pendingDoses = fn () => HospitalizationDose::where('status', 'pending')
+                ->whereHas('treatment.hospitalization', fn ($q) => $q->where('status', 'active'));
+            $hospital = [
+                'active' => Hospitalization::where('status', 'active')->count(),
+                'critical' => Hospitalization::where('status', 'active')->where('condition', 'critical')->count(),
+                'overdue' => $pendingDoses()->where('scheduled_at', '<', now())->count(),
+                'next' => $pendingDoses()->whereBetween('scheduled_at', [now(), now()->addHours(6)])->count(),
+            ];
+        }
+
         // Alertas de inventario: stock mínimo, agotados y lotes por vencer o vencidos.
         $inventory = null;
         if ($company && $company->planAllows('inventario')
@@ -83,9 +97,7 @@ class DashboardController extends Controller
         // devuelto. Las ventas anuladas no cuentan.
         $finance = null;
         if ($company && $company->planAllows('pos') && $user->hasPermissionInCompany('sales.view', $company)) {
-            $collected = fn ($from, $to) => (float) SalePayment::whereBetween('paid_at', [$from, $to])
-                    ->whereHas('sale', fn ($q) => $q->where('status', 'completed'))->sum('amount')
-                - (float) SaleReturn::whereBetween('created_at', [$from, $to])->sum('amount');
+            $collected = fn ($from, $to) => ReportData::income($from, $to);
 
             $month = [now()->startOfMonth(), now()->endOfMonth()];
             $finance = [
@@ -94,11 +106,9 @@ class DashboardController extends Controller
                 'sales_today' => Sale::where('status', 'completed')->whereBetween('created_at', [now()->startOfDay(), now()->endOfDay()])->count(),
                 'sales_month' => Sale::where('status', 'completed')->whereBetween('created_at', $month)->count(),
                 'receivable' => (float) Sale::receivable()->sum('balance'),
-                'expenses_month' => $company->planAllows('caja')
-                    ? (float) Expense::whereBetween('spent_at', [$month[0]->toDateString(), $month[1]->toDateString()])->sum('amount')
-                    : null,
+                'expenses_month' => $company->planAllows('caja') ? ReportData::expenses(...$month) : null,
             ];
-            $finance['profit_month'] = $finance['month'] - ($finance['expenses_month'] ?? 0);
+            $finance['profit_month'] = $finance['month'] - ReportData::productCost(...$month) - ($finance['expenses_month'] ?? 0);
             $finance['payable'] = $company->planAllows('compras') ? (float) Purchase::payable()->sum('balance') : null;
         }
 
@@ -111,7 +121,8 @@ class DashboardController extends Controller
             'today',
             'health',
             'inventory',
-            'finance'
+            'finance',
+            'hospital'
         ));
     }
 }

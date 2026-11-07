@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -20,6 +21,19 @@ class PermissionTest extends TestCase
 
         $this->actingInCompany($user, $company)->get(route('branches.index'))->assertOk();
         $this->actingInCompany($user, $company)->get(route('branches.create'))->assertForbidden();
+    }
+
+    public function test_un_403_sin_sesion_no_rompe_la_pagina_de_error(): void
+    {
+        // Regresión: la página 403 usaba el layout con menú, que exige un usuario.
+        Route::middleware('web')->get('/_test/prohibido', fn () => abort(403));
+
+        $this->get('/_test/prohibido')->assertForbidden()->assertSee('Acceso Denegado');
+    }
+
+    public function test_el_disco_privado_no_tiene_ruta_publica(): void
+    {
+        $this->get('/storage/lab/1/1/placa.png')->assertNotFound();
     }
 
     public function test_el_superadmin_salta_el_permiso(): void

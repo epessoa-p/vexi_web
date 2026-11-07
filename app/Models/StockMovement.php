@@ -35,6 +35,7 @@ class StockMovement extends Model
         'vaccination' => 'Vacunación',
         'deworming' => 'Desparasitación',
         'reversal' => 'Anulación',
+        'hospitalization' => 'Hospitalización',
         'sale' => 'Venta',
         'sale_return' => 'Devolución de venta',
         'other' => 'Otro',

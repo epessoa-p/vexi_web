@@ -117,6 +117,11 @@ class Consultation extends Model
         return $this->hasMany(ConsultationSupply::class)->orderBy('sort');
     }
 
+    public function labRequests(): HasMany
+    {
+        return $this->hasMany(LabRequest::class)->latest('requested_at');
+    }
+
     public function followups(): HasMany
     {
         return $this->hasMany(ConsultationFollowup::class)->orderByDesc('recorded_at');

@@ -133,7 +133,7 @@ class ConsultationController extends Controller
     {
         $consultation->load([
             'pet.species', 'pet.breed', 'client', 'veterinarian', 'appointment', 'diagnoses',
-            'prescriptionItems.product', 'procedures.performer', 'followups.recorder', 'supplies.product',
+            'prescriptionItems.product', 'procedures.performer', 'followups.recorder', 'supplies.product', 'labRequests.studyType',
         ]);
 
         return view('admin.consultations.show', compact('consultation'));

@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Documentos clínicos: se sirven solo por rutas de la app con permiso.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

@@ -15,11 +15,13 @@ class SaleItem extends Model
         'product' => 'Producto',
         'service' => 'Servicio',
         'consultation' => 'Consulta',
+        'lab' => 'Laboratorio',
+        'hospitalization' => 'Hospitalización',
         'other' => 'Otro',
     ];
 
     protected $fillable = [
-        'company_id', 'sale_id', 'type', 'product_id', 'service_id', 'consultation_id', 'description',
+        'company_id', 'sale_id', 'type', 'product_id', 'service_id', 'consultation_id', 'lab_request_id', 'hospitalization_id', 'description',
         'quantity', 'unit_price', 'discount', 'total', 'returned_quantity', 'affects_stock',
     ];
 

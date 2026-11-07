@@ -50,6 +50,8 @@
                                         <div class="small text-muted">
                                             {{ \App\Models\SaleItem::TYPES[$item->type] }}
                                             @if($item->consultation_id) · <a href="{{ route('consultations.show', $item->consultation_id) }}" class="text-decoration-none">consulta</a>@endif
+                                            @if($item->lab_request_id) · <a href="{{ route('lab.show', $item->lab_request_id) }}" class="text-decoration-none">estudio</a>@endif
+                                            @if($item->hospitalization_id) · <a href="{{ route('hospitalizations.show', $item->hospitalization_id) }}" class="text-decoration-none">internación</a>@endif
                                             @if((float) $item->returned_quantity > 0)<span class="text-danger"> · devuelto {{ $num($item->returned_quantity) }}</span>@endif
                                         </div>
                                     </td>

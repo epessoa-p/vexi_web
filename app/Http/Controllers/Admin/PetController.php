@@ -99,6 +99,9 @@ class PetController extends Controller
             ->with(['diagnoses', 'prescriptionItems', 'procedures', 'veterinarian', 'followups'])
             ->get();
 
+        $labRequests = $pet->labRequests()->with(['studyType', 'requester', 'results'])->get();
+        $hospitalizations = $pet->hospitalizations()->with(['kennel', 'veterinarian'])->get();
+
         // Sanidad: historial y lo pendiente (atrasado primero) de vacunas y desparasitaciones.
         $vaccinations = $pet->vaccinations()->with(['vaccine', 'veterinarian'])->get();
         $dewormings = $pet->dewormings()->with('veterinarian')->get();
@@ -110,7 +113,7 @@ class PetController extends Controller
             ->values();
 
         return view('admin.pets.show', compact(
-            'pet', 'upcomingAppointments', 'pastAppointments', 'consultations', 'vaccinations', 'dewormings', 'pendingHealth'
+            'pet', 'upcomingAppointments', 'pastAppointments', 'consultations', 'vaccinations', 'dewormings', 'pendingHealth', 'labRequests', 'hospitalizations'
         ));
     }
 

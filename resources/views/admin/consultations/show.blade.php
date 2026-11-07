@@ -41,6 +41,9 @@
             @if($c->prescriptionItems->isNotEmpty() || $c->instructions)
                 <a href="{{ route('consultations.prescription', $c) }}" target="_blank" class="btn btn-outline-primary"><i class="bi bi-printer"></i> Receta</a>
             @endif
+            @if($tenantCompany?->planAllows('hospitalizacion') && $can('hospitalizations.create') && $pet->status === 'active')
+                <a href="{{ route('hospitalizations.create', ['consultation_id' => $c->id]) }}" class="btn btn-outline-primary"><i class="bi bi-hospital"></i> Internar</a>
+            @endif
             @if(! $c->isOpen() && $tenantCompany?->planAllows('pos'))
                 @if($c->sale_id && $can('sales.view'))
                     <a href="{{ route('sales.show', $c->sale_id) }}" class="btn btn-outline-success"><i class="bi bi-receipt"></i> Cobrada</a>
@@ -165,6 +168,27 @@
                                 </li>
                             @endforeach
                         </ul>
+                    </div>
+                </div>
+            @endif
+
+            @if($tenantCompany?->planAllows('laboratorio') && $can('lab_requests.view'))
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-eyedropper"></i> Laboratorio</h6>
+                            @if($can('lab_requests.create'))
+                                <a href="{{ route('lab.create', ['pet_id' => $pet->id, 'consultation_id' => $c->id]) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Solicitar</a>
+                            @endif
+                        </div>
+                        @forelse($c->labRequests as $lab)
+                            <a href="{{ route('lab.show', $lab) }}" class="d-flex justify-content-between border-top py-1 small text-decoration-none text-reset">
+                                <span>{{ $lab->studyType?->name }}</span>
+                                <span class="badge bg-{{ $lab->status_color }}">{{ $lab->status_label }}</span>
+                            </a>
+                        @empty
+                            <p class="small text-muted mb-0">Sin estudios solicitados.</p>
+                        @endforelse
                     </div>
                 </div>
             @endif

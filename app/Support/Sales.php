@@ -5,12 +5,12 @@ namespace App\Support;
 use App\Models\Branch;
 use App\Models\CashSession;
 use App\Models\Company;
-use App\Models\Consultation;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturn;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -24,7 +24,7 @@ class Sales
     /**
      * @param  array{client_id?: ?int, pet_id?: ?int, branch?: ?Branch, session?: ?CashSession, discount?: float,
      *               due_date?: ?string, notes?: ?string,
-     *               items: array<int, array{type: string, product_id?: ?int, service_id?: ?int, consultation_id?: ?int,
+     *               items: array<int, array{type: string, product_id?: ?int, service_id?: ?int, consultation_id?: ?int, lab_request_id?: ?int, hospitalization_id?: ?int,
      *                                       description: string, quantity: float, unit_price: float, discount?: float, affects_stock?: bool}>,
      *               payments: array<int, array{method: PaymentMethod, amount: float, reference?: ?string}>}  $data
      */
@@ -87,6 +87,8 @@ class Sales
                     'product_id' => $line['product_id'] ?? null,
                     'service_id' => $line['service_id'] ?? null,
                     'consultation_id' => $line['consultation_id'] ?? null,
+                    'lab_request_id' => $line['lab_request_id'] ?? null,
+                    'hospitalization_id' => $line['hospitalization_id'] ?? null,
                     'description' => $line['description'],
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
@@ -104,15 +106,7 @@ class Sales
                 }
             }
 
-            // Una consulta se cobra una sola vez.
-            $consultationIds = $lines->pluck('consultation_id')->filter()->unique();
-            if ($consultationIds->isNotEmpty()) {
-                $already = Consultation::whereIn('id', $consultationIds)->whereNotNull('sale_id')->lockForUpdate()->exists();
-                if ($already) {
-                    throw ValidationException::withMessages(['items' => 'Una de las consultas ya fue cobrada en otra venta.']);
-                }
-                Consultation::whereIn('id', $consultationIds)->update(['sale_id' => $sale->id]);
-            }
+            self::linkBillables($sale, $lines);
 
             foreach ($payments as $payment) {
                 self::registerPayment($sale, $payment['method'], $payment['amount'], $payment['reference'] ?? null, $session, 'sale');
@@ -223,7 +217,8 @@ class Sales
 
     /**
      * Anulación total: todo lo que salió del stock vuelve, se reembolsa lo
-     * cobrado y las consultas quedan otra vez pendientes de cobro.
+     * cobrado y lo atendido (consultas, estudios, internaciones) queda otra vez
+     * pendiente de cobro.
      */
     public static function cancel(Sale $sale, string $reason, ?PaymentMethod $refundMethod, ?CashSession $session): void
     {
@@ -248,7 +243,9 @@ class Sales
                 Cash::record($session, 'refund', $refundMethod, -$refund, "Anulación venta {$sale->code}", $sale);
             }
 
-            Consultation::where('sale_id', $sale->id)->update(['sale_id' => null]);
+            foreach (Billables::LINKS as [$model]) {
+                $model::where('sale_id', $sale->id)->update(['sale_id' => null]);
+            }
 
             $sale->update([
                 'status' => 'cancelled',
@@ -259,6 +256,33 @@ class Sales
                 'cancel_reason' => $reason,
             ]);
         });
+    }
+
+    /**
+     * Enlaza a la venta lo atendido que cobra: cada registro se cobra una sola
+     * vez y siempre al propietario de la mascota.
+     */
+    protected static function linkBillables(Sale $sale, Collection $lines): void
+    {
+        foreach (Billables::LINKS as $column => [$model, $label]) {
+            $ids = $lines->pluck($column)->filter()->unique();
+
+            if ($ids->isEmpty()) {
+                continue;
+            }
+
+            $records = $model::with('pet')->whereIn('id', $ids)->lockForUpdate()->get();
+
+            if ($records->contains(fn ($record) => $record->sale_id !== null)) {
+                throw ValidationException::withMessages(['items' => "Una de las {$label} ya fue cobrada en otra venta."]);
+            }
+
+            if ($records->contains(fn ($record) => (int) $record->pet?->client_id !== (int) $sale->client_id)) {
+                throw ValidationException::withMessages(['items' => "Una de las {$label} es de la mascota de otro cliente: elige a su propietario."]);
+            }
+
+            $model::whereIn('id', $ids)->update(['sale_id' => $sale->id]);
+        }
     }
 
     /**
