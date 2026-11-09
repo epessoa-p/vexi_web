@@ -7,8 +7,7 @@
         <span class="rpt-delta is-neutral"><small>Sin datos para comparar</small></span>
     @else
         <span class="rpt-delta is-{{ $delta['tone'] }}" title="Comparado con {{ $period->previousLabel }}">
-            <i class="bi {{ $icon }}" aria-hidden="true"></i>
-            {{ $delta['pct'] > 0 ? '+' : '' }}{{ number_format($delta['pct'], 0) }} %
+            <span class="text-nowrap"><i class="bi {{ $icon }}" aria-hidden="true"></i> {{ $delta['pct'] > 0 ? '+' : '' }}{{ number_format($delta['pct'], 0) }} %</span>
             <small class="d-print-none">vs. {{ $period->previousLabel }}</small>
         </span>
     @endif

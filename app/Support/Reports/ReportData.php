@@ -454,7 +454,7 @@ class ReportData
             return ['pct' => null, 'direction' => (float) $current === 0.0 ? 'flat' : 'up', 'tone' => 'neutral'];
         }
 
-        $pct = round(($current - $previous) / abs($previous) * 100);
+        $pct = round(($current - $previous) / abs($previous) * 100) + 0.0;  // sin "-0"
         $direction = $pct > 0 ? 'up' : ($pct < 0 ? 'down' : 'flat');
         $good = $upIsGood ? $direction === 'up' : $direction === 'down';
 

@@ -142,6 +142,7 @@ permisos.
 | Catálogo de estudios y valores de referencia | `/configuracion/estudios` | `lab_studies.*` | `laboratorio` |
 | Hospitalización: admisión, tratamientos, cuidados, costos y alta | `/hospitalizacion` | `hospitalizations.*` | `hospitalizacion` |
 | Jaulas y espacios de internación | `/configuracion/espacios` | `kennels.*` | `hospitalizacion` |
+| Reportes: resumen, finanzas, ventas, clínica e inventario; Excel e impresión | `/reportes` | `reports.view`, `reports.finance`, `reports.export` | `estadisticas` |
 | Vacunación (calendario, aplicaciones, desparasitaciones, carnet) | `/vacunacion`, `/mascotas/{id}/carnet` | `vaccinations.*` | `vacunas` |
 | Catálogo de vacunas y protocolos | `/configuracion/vacunas` | `vaccines.*` | `vacunas` |
 | Productos y kardex | `/inventario/productos` | `products.*` | `inventario` |
@@ -289,6 +290,34 @@ Cada veterinaria nueva arranca con un catálogo de especies y razas
   sirven por `lab.attachments.show`, con sesión, permiso y empresa activa. La
   ruta automática `/storage` del disco privado está desactivada.
 
+### Reportes
+
+- Cinco pantallas, cada una responde una pregunta: **Resumen** (¿cómo va la
+  veterinaria?), **Finanzas**, **Ventas**, **Clínica** e **Inventario**. Un solo
+  filtro arriba (período, agrupación y sucursal) gobierna todo lo de abajo.
+- **Una sola definición de cada cifra** (`App\Support\Reports\ReportData`), que
+  usa también el panel de inicio:
+  - *Ingresos*: dinero cobrado menos reembolsos. Lo fiado cuenta al cobrarse.
+  - *Ventas*: lo vendido sin anuladas, descontando devoluciones y repartiendo el
+    descuento general entre las líneas, así la suma por producto da el total.
+  - *Costo*: unidades vendidas al precio de compra **actual** del producto.
+  - *Utilidad estimada*: ingresos − costo − gastos. Las compras no se restan: es
+    stock hasta que se vende. Es una orientación, no un balance contable.
+- **Comparación justa**: "Este mes" se compara con los mismos días del mes
+  anterior; sin base no se muestra porcentaje.
+- **Permisos**: `reports.view` ve Clínica e Inventario sin importes;
+  `reports.finance` ve el dinero (Resumen, Finanzas, Ventas y valor del
+  inventario); `reports.export` descarga Excel. El veterinario solo tiene
+  `reports.view`.
+- **Gráficos** propios en SVG (sin librerías), con paleta validada para
+  daltonismo, lectura con puntero o flechas del teclado, y cada gráfico con su
+  tabla de datos. Vacunas e internaciones no tienen sucursal: el filtro de
+  sucursal no las afecta y la pantalla lo avisa.
+- **Excel**: `.xlsx` real con números como números y textos como texto (nunca
+  fórmulas). Requiere la extensión `zip` de PHP. **PDF**: desde "Imprimir o
+  PDF", con una hoja de estilos que deja solo el contenido.
+- La demo siembra seis meses de actividad (`seedReportHistory`). Esas ventas no
+  generan kardex: es historia ya cerrada.
 ### Hospitalización
 
 - Un paciente tiene una sola internación activa y un espacio aloja a un solo

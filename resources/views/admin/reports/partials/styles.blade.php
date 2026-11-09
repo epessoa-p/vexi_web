@@ -71,7 +71,7 @@
     .rpt-tile-hint { font-size: .8125rem; color: var(--rpt-muted); }
 
     /* Variación: dirección con flecha y signo, además del color. */
-    .rpt-delta { font-size: .8125rem; display: inline-flex; align-items: center; gap: .25rem; font-weight: 600; }
+    .rpt-delta { font-size: .8125rem; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 .25rem; font-weight: 600; }
     .rpt-delta small { font-weight: 400; color: var(--rpt-muted); font-size: 1em; }
     .rpt-delta.is-good { color: var(--rpt-good); }
     .rpt-delta.is-bad { color: var(--rpt-bad); }
